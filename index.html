@@ -5,157 +5,176 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>لوحة تتبع المحافظ الاستثمارية</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{
-  --bg:#0F1117;--bg2:#161B27;--bg3:#1E2536;--border:#2A3348;--border2:#334060;
-  --text:#E8EDF5;--text2:#8A97B0;--text3:#556075;
-  --blue:#3B82F6;--blue-dim:#1E3A6E;--blue-light:#EFF6FF;
-  --green:#22C55E;--green-dim:#14532D;
-  --red:#EF4444;--red-dim:#7F1D1D;
-  --amber:#F59E0B;--amber-dim:#78350F;
-  --purple:#8B5CF6;--purple-dim:#3B0764;
-  --radius:10px;--radius-sm:6px;
-}
+:root{--bg:#0F1117;--bg2:#161B27;--bg3:#1E2536;--border:#2A3348;--border2:#334060;--text:#E8EDF5;--text2:#8A97B0;--text3:#556075;--blue:#3B82F6;--blue-dim:#1E3A6E;--green:#22C55E;--red:#EF4444;--amber:#F59E0B;--purple:#8B5CF6;--radius:10px;--radius-sm:6px}
 *{box-sizing:border-box;font-family:'IBM Plex Sans Arabic',sans-serif}
 body{background:var(--bg);color:var(--text);margin:0;padding:0;min-height:100vh}
 ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:var(--bg2)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
-a{color:var(--blue);text-decoration:none}
-
-/* HEADER */
 .header{background:var(--bg2);border-bottom:1px solid var(--border);padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.header-title{font-size:17px;font-weight:600;color:var(--text)}
-.header-sub{font-size:12px;color:var(--text2);margin-top:2px}
-.header-badge{background:var(--blue-dim);color:var(--blue);font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid #2563EB33}
-
-/* LAYOUT */
+.header-title{font-size:17px;font-weight:600}.header-sub{font-size:12px;color:var(--text2);margin-top:2px}
+.sync-status{font-size:12px;padding:4px 12px;border-radius:20px;border:1px solid}
+.sync-ok{background:#14532D22;border-color:#14532D;color:var(--green)}.sync-err{background:#7F1D1D22;border-color:#7F1D1D;color:var(--red)}.sync-loading{background:#1E3A6E22;border-color:#1E3A6E;color:var(--blue)}
+.loading-overlay{position:fixed;inset:0;background:#0F111799;display:none;align-items:center;justify-content:center;z-index:999}
+.loading-spinner{width:40px;height:40px;border:3px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 .main{padding:1.25rem 1.5rem;max-width:1400px;margin:0 auto}
-
-/* METRICS */
 .metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.25rem}
 .metric{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:.9rem 1rem;transition:border-color .2s}
 .metric:hover{border-color:var(--border2)}
-.metric-label{font-size:11px;color:var(--text2);margin:0 0 4px;font-weight:400}
-.metric-value{font-size:18px;font-weight:600;margin:0;letter-spacing:-.3px}
-.metric-sub{font-size:10px;color:var(--text3);margin:3px 0 0}
-
-/* TABS */
+.metric-label{font-size:11px;color:var(--text2);margin:0 0 4px}.metric-value{font-size:18px;font-weight:600;margin:0}
 .tabs{display:flex;gap:3px;margin-bottom:1.1rem;background:var(--bg2);padding:4px;border-radius:var(--radius);border:1px solid var(--border);flex-wrap:wrap}
 .tab{padding:7px 14px;font-size:12.5px;border-radius:var(--radius-sm);border:none;background:transparent;color:var(--text2);cursor:pointer;transition:all .15s;font-family:inherit}
-.tab:hover{color:var(--text);background:var(--bg3)}
-.tab.active{background:var(--bg3);color:var(--blue);font-weight:500;border:1px solid var(--border2)}
+.tab:hover{color:var(--text);background:var(--bg3)}.tab.active{background:var(--bg3);color:var(--blue);font-weight:500;border:1px solid var(--border2)}
 .panel{display:none}.panel.active{display:block}
-
-/* INPUTS */
-input,select,textarea{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;padding:7px 10px;font-family:inherit;width:100%;transition:border-color .15s}
-input:focus,select:focus{outline:none;border-color:var(--blue)}
-input::placeholder{color:var(--text3)}
-select option{background:var(--bg3)}
+input,select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;padding:7px 10px;font-family:inherit;width:100%;transition:border-color .15s}
+input:focus,select:focus{outline:none;border-color:var(--blue)}input::placeholder{color:var(--text3)}select option{background:var(--bg3)}
 label.lbl{font-size:11px;color:var(--text2);display:block;margin-bottom:4px;font-weight:500}
-
-/* BUTTONS */
 .btn{padding:8px 16px;font-size:13px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg3);color:var(--text);cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap}
-.btn:hover{border-color:var(--border2);background:var(--border)}
-.btn-blue{background:var(--blue-dim);border-color:#2563EB55;color:var(--blue)}
-.btn-blue:hover{background:#1D3A6A;border-color:var(--blue)}
-.btn-red{background:var(--red-dim);border-color:#DC262655;color:var(--red)}
-.btn-red:hover{background:#6B1A1A;border-color:var(--red)}
-.btn-amber{background:var(--amber-dim);border-color:#D9770655;color:var(--amber)}
+.btn:hover{border-color:var(--border2)}.btn-blue{background:var(--blue-dim);border-color:#2563EB55;color:var(--blue)}.btn-blue:hover{background:#1D3A6A;border-color:var(--blue)}
+.btn-red{background:#7F1D1D;border-color:#DC262655;color:var(--red)}.btn-green{background:#14532D;border-color:#16653355;color:var(--green)}.btn-sm{padding:4px 10px;font-size:12px}
 .btn-del{background:none;border:none;color:var(--text3);cursor:pointer;padding:4px 7px;border-radius:var(--radius-sm);font-size:13px;transition:all .15s}
 .btn-del:hover{color:var(--red);background:#EF444415}
-
-/* CARDS */
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:.85rem;overflow:hidden;transition:border-color .2s}
-.card:hover{border-color:var(--border2)}
-.card-pad{padding:1.1rem}
-.card-head{padding:.85rem 1.1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;user-select:none;transition:background .15s}
-.card-head:hover{background:var(--bg3)}
+.card:hover{border-color:var(--border2)}.card-pad{padding:1.1rem}
+.card-head{padding:.85rem 1.1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;user-select:none}
+.card-head-click{cursor:pointer}.card-head-click:hover{background:var(--bg3)}
 .sec-title{font-size:12.5px;font-weight:500;color:var(--text2);margin:0 0 10px;text-transform:uppercase;letter-spacing:.5px}
-
-/* TABLE */
 table{width:100%;border-collapse:collapse;font-size:12px}
 th{font-weight:500;color:var(--text3);font-size:11px;padding:8px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap;background:var(--bg3);text-transform:uppercase;letter-spacing:.4px}
 td{padding:9px 8px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
-tr:last-child td{border-bottom:none}
-tr.srow:hover td{background:var(--bg3)}
-
-/* COLORS */
-.pos{color:var(--green);font-weight:500}
-.neg{color:var(--red);font-weight:500}
-.warn{color:var(--amber);font-weight:500}
-.muted{color:var(--text2)}
-
-/* BADGES */
+tr:last-child td{border-bottom:none}tr.srow:hover td{background:var(--bg3)}
+.pos{color:var(--green);font-weight:500}.neg{color:var(--red);font-weight:500}.warn{color:var(--amber);font-weight:500}.muted{color:var(--text2)}
 .badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500;border:1px solid transparent}
-.b-stocks{background:#1E3A6E22;color:#60A5FA;border-color:#1E3A6E}
-.b-funds{background:#14532D22;color:#4ADE80;border-color:#14532D}
-.b-realty{background:#78350F22;color:#FBB040;border-color:#78350F}
-.b-us{background:#3B076422;color:#A78BFA;border-color:#3B0764}
-.b-other{background:#1F293722;color:#94A3B8;border-color:#334155}
-.b-div{background:#14532D22;color:#4ADE80;border-color:#14532D}
-.b-dep{background:#1E3A6E22;color:#60A5FA;border-color:#1E3A6E}
-.b-wit{background:#7F1D1D22;color:#FCA5A5;border-color:#7F1D1D}
-.b-fee{background:#78350F22;color:#FBB040;border-color:#78350F}
-.b-zakat{background:#3B076422;color:#A78BFA;border-color:#3B0764}
-.b-purify{background:#4A044E22;color:#E879F9;border-color:#4A044E}
-.b-sell{background:#7F1D1D22;color:#FCA5A5;border-color:#7F1D1D}
-.b-adj{background:#1F293722;color:#94A3B8;border-color:#334155}
-
-/* PCT BAR */
-.pct-bar{height:3px;border-radius:2px;background:var(--border);margin-top:4px;overflow:hidden}
-.pct-fill{height:100%;border-radius:2px}
-
-/* CHEVRON */
-.chevron{transition:transform .2s;display:inline-block;color:var(--text3)}
-.collapsed .chevron{transform:rotate(-90deg)}
-
-/* INFO BOX */
+.b-stocks{background:#1E3A6E22;color:#60A5FA;border-color:#1E3A6E}.b-funds{background:#14532D22;color:#4ADE80;border-color:#14532D}.b-realty{background:#78350F22;color:#FBB040;border-color:#78350F}.b-us{background:#3B076422;color:#A78BFA;border-color:#3B0764}.b-other{background:#1F293722;color:#94A3B8;border-color:#334155}
+.b-div{background:#14532D22;color:#4ADE80;border-color:#14532D}.b-dep{background:#1E3A6E22;color:#60A5FA;border-color:#1E3A6E}.b-wit{background:#7F1D1D22;color:#FCA5A5;border-color:#7F1D1D}.b-fee{background:#78350F22;color:#FBB040;border-color:#78350F}.b-zakat{background:#3B076422;color:#A78BFA;border-color:#3B0764}.b-purify{background:#4A044E22;color:#E879F9;border-color:#4A044E}.b-sell{background:#7F1D1D22;color:#FCA5A5;border-color:#7F1D1D}.b-adj{background:#1F293722;color:#94A3B8;border-color:#334155}
+.pct-bar{height:3px;border-radius:2px;background:var(--border);margin-top:4px;overflow:hidden}.pct-fill{height:100%;border-radius:2px}
+.chevron{transition:transform .2s;display:inline-block;color:var(--text3)}.collapsed .chevron{transform:rotate(-90deg)}
 .info-box{background:var(--bg3);border:1px dashed var(--border2);border-radius:var(--radius-sm);padding:.85rem 1rem;font-size:12px;color:var(--text2);line-height:2}
-
-/* PREVIEW */
 .preview{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:.75rem 1rem;font-size:12.5px;line-height:2;margin-top:.75rem;display:none}
-
-/* PERIOD BTNS */
 .period-btns{display:flex;gap:4px;flex-wrap:wrap}
 .period-btn{padding:5px 12px;font-size:12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-family:inherit;transition:all .15s}
-.period-btn:hover{border-color:var(--border2);color:var(--text)}
-.period-btn.active{background:var(--blue-dim);border-color:#2563EB55;color:var(--blue);font-weight:500}
-
-/* SELL TYPE */
+.period-btn:hover{border-color:var(--border2);color:var(--text)}.period-btn.active{background:var(--blue-dim);border-color:#2563EB55;color:var(--blue);font-weight:500}
 .sell-type-btns{display:flex;gap:8px;margin-bottom:1rem}
 .sell-type-btn{flex:1;padding:12px;font-size:13px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;text-align:center;transition:all .2s;font-family:inherit;line-height:1.6}
-.sell-type-btn:hover{border-color:var(--border2)}
-.sell-type-btn.partial.active{background:var(--amber-dim);border-color:#D97706;color:var(--amber)}
-.sell-type-btn.full.active{background:var(--red-dim);border-color:#DC2626;color:var(--red)}
-
-/* COMPARE BAR */
+.sell-type-btn.partial.active{background:#78350F44;border-color:#D97706;color:var(--amber)}.sell-type-btn.full.active{background:#7F1D1D44;border-color:#DC2626;color:var(--red)}
+.buy-mode-btns{display:flex;gap:8px;margin-bottom:1rem}
+.buy-mode-btn{flex:1;padding:12px;font-size:13px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;text-align:center;transition:all .2s;font-family:inherit;line-height:1.6}
+.buy-mode-btn.new.active{background:#1E3A6E44;border-color:#2563EB;color:var(--blue)}.buy-mode-btn.add.active{background:#14532D44;border-color:#16A34A;color:var(--green)}
 .compare-bar{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px}
 .compare-fill{height:16px;border-radius:3px;min-width:4px;transition:width .4s;opacity:.8}
-
-/* GRID */
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-@media(max-width:640px){.grid2{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.tabs{gap:2px}.tab{padding:6px 10px;font-size:12px}}
-
-/* DIVIDER */
-.divider{height:1px;background:var(--border);margin:1rem 0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.modal-overlay{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;z-index:200}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;min-width:320px;max-width:460px;width:90%}
+.modal h3{margin:0 0 1rem;font-size:15px;font-weight:600}
+.qa-btns{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.qa-btn{padding:3px 10px;font-size:11px;border-radius:20px;border:1px solid;cursor:pointer;font-family:inherit;transition:all .15s;background:transparent}
+.qa-buy{border-color:#2563EB44;color:var(--blue)}.qa-buy:hover{background:var(--blue-dim)}
+.qa-sell{border-color:#DC262644;color:var(--red)}.qa-sell:hover{background:#7F1D1D44}
+.qa-edit{border-color:#55607544;color:var(--text2)}.qa-edit:hover{background:var(--bg3)}
+.compare-section{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:.75rem}
+.compare-label{font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:500;text-transform:uppercase;letter-spacing:.4px}
+.compare-vs{background:var(--blue-dim);color:var(--blue);padding:.5rem 1rem;border-radius:var(--radius-sm);font-size:12px;font-weight:500;margin-bottom:.75rem;border:1px solid #2563EB33}
+@media(max-width:640px){.grid2{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.tabs{gap:2px}.tab{padding:6px 10px;font-size:12px}.buy-mode-btns,.sell-type-btns{flex-direction:column}}
+/* LOGIN */
+.login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:500}
+.login-card{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);padding:2.5rem 2rem;width:100%;max-width:380px;box-shadow:0 20px 60px #00000066}
+.login-logo{font-size:32px;text-align:center;margin-bottom:.5rem}
+.login-title{font-size:20px;font-weight:600;text-align:center;margin-bottom:.25rem}
+.login-sub{font-size:13px;color:var(--text2);text-align:center;margin-bottom:1.75rem}
+.login-tabs{display:flex;gap:4px;background:var(--bg3);padding:4px;border-radius:var(--radius-sm);margin-bottom:1.25rem;border:1px solid var(--border)}
+.login-tab{flex:1;padding:7px;font-size:13px;border-radius:var(--radius-sm);border:none;background:transparent;color:var(--text2);cursor:pointer;font-family:inherit;transition:all .15s}
+.login-tab.active{background:var(--bg2);color:var(--blue);font-weight:500;border:1px solid var(--border2)}
+.login-input-wrap{margin-bottom:.85rem}
+.login-btn{width:100%;padding:10px;font-size:14px;border-radius:var(--radius-sm);border:none;background:var(--blue);color:#fff;cursor:pointer;font-family:inherit;font-weight:500;transition:all .15s;margin-top:.25rem}
+.login-btn:hover{background:#2563EB}.login-btn:disabled{opacity:.5;cursor:not-allowed}
+.login-err{background:#7F1D1D33;border:1px solid #DC262644;border-radius:var(--radius-sm);padding:.65rem 1rem;font-size:13px;color:var(--red);margin-bottom:.75rem;display:none}
+.login-ok{background:#14532D33;border:1px solid #16A34A44;border-radius:var(--radius-sm);padding:.65rem 1rem;font-size:13px;color:var(--green);margin-bottom:.75rem;display:none}
+.user-badge{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:4px 12px 4px 6px;font-size:12px;color:var(--text2)}
+.user-avatar{width:24px;height:24px;border-radius:50%;background:var(--blue-dim);border:1px solid var(--blue);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--blue);font-weight:600}
+.logout-btn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:2px 4px;font-family:inherit;transition:color .15s}
+.logout-btn:hover{color:var(--red)}
 </style>
 </head>
 <body>
+<div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div></div>
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">📊</div>
+    <div class="login-title">المحافظ الاستثمارية</div>
+    <div class="login-sub">سجّل دخولك للوصول للوحتك</div>
+    <div class="login-tabs">
+      <button class="login-tab active" id="tabLogin" onclick="switchLoginTab('login')">تسجيل الدخول</button>
+      <button class="login-tab" id="tabRegister" onclick="switchLoginTab('register')">إنشاء حساب</button>
+    </div>
+    <div id="loginErr" class="login-err"></div>
+    <div id="loginOk" class="login-ok"></div>
+    <div class="login-input-wrap">
+      <label class="lbl">البريد الإلكتروني</label>
+      <input type="email" id="loginEmail" placeholder="example@email.com" onkeydown="if(event.key==='Enter')submitAuth()">
+    </div>
+    <div class="login-input-wrap">
+      <label class="lbl">كلمة المرور</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter')submitAuth()">
+    </div>
+    <div class="login-input-wrap" id="confirmWrap" style="display:none">
+      <label class="lbl">تأكيد كلمة المرور</label>
+      <input type="password" id="loginConfirm" placeholder="••••••••" onkeydown="if(event.key==='Enter')submitAuth()">
+    </div>
+    <button class="login-btn" id="loginBtn" onclick="submitAuth()">دخول</button>
+    <p id="forgotWrap" style="text-align:center;margin-top:.85rem;font-size:12px;color:var(--text2)">
+      <span onclick="resetPassword()" style="color:var(--blue);cursor:pointer;text-decoration:underline">نسيت كلمة المرور؟</span>
+    </p>
+  </div>
+</div>
+
+<!-- QUICK ACTION MODAL -->
+<div class="modal-overlay" id="qaModal">
+  <div class="modal">
+    <h3 id="qaModalTitle">عملية سريعة</h3>
+    <div id="qaModalBody"></div>
+    <div style="display:flex;gap:8px;margin-top:1rem;justify-content:flex-end">
+      <button class="btn" onclick="closeQaModal()">إلغاء</button>
+      <button class="btn btn-blue" id="qaModalConfirm">تأكيد</button>
+    </div>
+  </div>
+</div>
+
+<!-- RENAME MODAL -->
+<div class="modal-overlay" id="renameModal">
+  <div class="modal">
+    <h3>تعديل اسم المحفظة</h3>
+    <div><label class="lbl">الاسم الجديد</label><input type="text" id="renameInput" placeholder="اسم المحفظة"></div>
+    <div style="display:flex;gap:8px;margin-top:1rem;justify-content:flex-end">
+      <button class="btn" onclick="closeRenameModal()">إلغاء</button>
+      <button class="btn btn-blue" onclick="confirmRename()">حفظ</button>
+    </div>
+  </div>
+</div>
 
 <div class="header">
-  <div>
-    <div class="header-title">📊 لوحة المحافظ الاستثمارية</div>
-    <div class="header-sub">تتبع الأداء • البيع والشراء • الزكاة والتطهير</div>
+  <div><div class="header-title">📊 المحافظ الاستثمارية</div><div class="header-sub">تتبع الأداء • البيع والشراء • الزكاة والتطهير</div></div>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span id="lastUpdate" style="font-size:11px;color:var(--text3)"></span>
+    <button onclick="refreshPrices()" style="padding:5px 14px;font-size:12px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);cursor:pointer;font-family:inherit" id="refreshBtn">🔄 تحديث الأسعار</button>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <div id="userBadge" class="user-badge" style="display:none">
+      <div class="user-avatar" id="userAvatar">؟</div>
+      <span id="userEmail" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+      <button class="logout-btn" onclick="logout()" title="خروج">خروج ↩</button>
+    </div>
+    <span id="lastUpdate" style="font-size:11px;color:var(--text3)"></span>
+    <button onclick="refreshPrices()" style="padding:5px 14px;font-size:12px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);cursor:pointer;font-family:inherit" id="refreshBtn">🔄 تحديث الأسعار</button>
+    <span class="sync-status sync-loading" id="syncStatus">⏳ جاري الاتصال...</span>
   </div>
-  <span class="header-badge">v6.0</span>
+  </div>
 </div>
 
 <div class="main">
-
 <div id="metrics" class="metrics-grid"></div>
-
 <div class="tabs" id="mainTabs">
   <button class="tab active" onclick="switchTab('overview')">🏠 نظرة عامة</button>
   <button class="tab" onclick="switchTab('analysis')">📈 تحليل وفلتر</button>
@@ -170,153 +189,140 @@ tr.srow:hover td{background:var(--bg3)}
 <div id="tab-overview" class="panel active">
   <div id="portfolioCards"></div>
   <div class="grid2">
-    <div class="card card-pad">
-      <p class="sec-title">توزيع المحافظ</p>
-      <div style="position:relative;height:190px"><canvas id="pieChart"></canvas></div>
-    </div>
-    <div class="card card-pad">
-      <p class="sec-title">العائد الصافي لكل محفظة</p>
-      <div style="position:relative;height:190px"><canvas id="barChart"></canvas></div>
-    </div>
+    <div class="card card-pad"><p class="sec-title">توزيع المحافظ</p><div style="position:relative;height:190px"><canvas id="pieChart"></canvas></div></div>
+    <div class="card card-pad"><p class="sec-title">العائد الصافي</p><div style="position:relative;height:190px"><canvas id="barChart"></canvas></div></div>
   </div>
 </div>
 
 <!-- ANALYSIS -->
 <div id="tab-analysis" class="panel">
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:.85rem;flex-wrap:wrap">
-    <span style="font-size:12px;color:var(--text2);font-weight:500">الفترة:</span>
-    <div class="period-btns">
-      <button class="period-btn active" onclick="setPeriod('all',this)">الكل</button>
-      <button class="period-btn" onclick="setPeriod('ytd',this)">منذ بداية السنة</button>
-      <button class="period-btn" onclick="setPeriod('q',this)">الربع الحالي</button>
-      <button class="period-btn" onclick="setPeriod('m',this)">الشهر الحالي</button>
-      <button class="period-btn" onclick="setPeriod('3m',this)">3 أشهر</button>
-      <button class="period-btn" onclick="setPeriod('6m',this)">6 أشهر</button>
-      <button class="period-btn" onclick="setPeriod('1y',this)">سنة</button>
+  <!-- PERIOD A -->
+  <div class="compare-section">
+    <div class="compare-label">📅 الفترة الأولى</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <div>
+        <label class="lbl">السنة</label>
+        <select id="yearSelectA" onchange="onYearChangeA()" style="width:100px;font-size:13px"></select>
+      </div>
+      <div>
+        <label class="lbl">الفترة</label>
+        <select id="periodSelectA" onchange="onPeriodChangeA()" style="width:160px;font-size:13px">
+          <option value="all">السنة كلها</option>
+          <option value="q1">الربع الأول</option>
+          <option value="q2">الربع الثاني</option>
+          <option value="q3">الربع الثالث</option>
+          <option value="q4">الربع الرابع</option>
+          <option value="m">هذا الشهر</option>
+          <option value="3m">آخر 3 أشهر</option>
+          <option value="6m">آخر 6 أشهر</option>
+          <option value="custom">تخصيص</option>
+        </select>
+      </div>
     </div>
+    <div id="customRangeA" style="display:none;margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <div style="display:flex;align-items:center;gap:6px"><label class="lbl" style="margin:0;white-space:nowrap;font-size:12px">من:</label><input type="date" id="customFromA" style="width:145px" onchange="renderAnalysis()"></div>
+      <div style="display:flex;align-items:center;gap:6px"><label class="lbl" style="margin:0;white-space:nowrap;font-size:12px">إلى:</label><input type="date" id="customToA" style="width:145px" onchange="renderAnalysis()"></div>
+    </div>
+    <div id="periodLabelA" style="font-size:12px;color:var(--blue);margin-top:6px;font-weight:500"></div>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:.75rem">
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;color:var(--text2)">
+      <input type="checkbox" id="compareToggle" onchange="toggleCompare()" style="width:auto;accent-color:var(--blue)"> مقارنة مع فترة أخرى
+    </label>
+  </div>
+
+  <!-- PERIOD B -->
+  <div id="comparePeriodB" style="display:none" class="compare-section">
+    <div class="compare-label" style="color:var(--blue)">📅 الفترة الثانية (للمقارنة)</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <div>
+        <label class="lbl">السنة</label>
+        <select id="yearSelectB" onchange="onYearChangeB()" style="width:100px;font-size:13px"></select>
+      </div>
+      <div>
+        <label class="lbl">الفترة</label>
+        <select id="periodSelectB" onchange="onPeriodChangeB()" style="width:160px;font-size:13px">
+          <option value="all">السنة كلها</option>
+          <option value="q1">الربع الأول</option>
+          <option value="q2">الربع الثاني</option>
+          <option value="q3">الربع الثالث</option>
+          <option value="q4">الربع الرابع</option>
+          <option value="m">هذا الشهر</option>
+          <option value="3m">آخر 3 أشهر</option>
+          <option value="6m">آخر 6 أشهر</option>
+          <option value="custom">تخصيص</option>
+        </select>
+      </div>
+    </div>
+    <div id="customRangeB" style="display:none;margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <div style="display:flex;align-items:center;gap:6px"><label class="lbl" style="margin:0;white-space:nowrap;font-size:12px">من:</label><input type="date" id="customFromB" style="width:145px" onchange="renderAnalysis()"></div>
+      <div style="display:flex;align-items:center;gap:6px"><label class="lbl" style="margin:0;white-space:nowrap;font-size:12px">إلى:</label><input type="date" id="customToB" style="width:145px" onchange="renderAnalysis()"></div>
+    </div>
+    <div id="periodLabelB" style="font-size:12px;color:var(--blue);margin-top:6px;font-weight:500"></div>
   </div>
   <div id="analysisMetrics" class="metrics-grid" style="margin-bottom:1rem"></div>
+  <div id="compareBlock" style="display:none;margin-bottom:1rem">
+    <div class="compare-vs" id="compareVsLabel"></div>
+    <div id="compareMetrics" class="metrics-grid"></div>
+  </div>
   <div class="grid2" style="margin-bottom:1rem">
-    <div class="card card-pad">
-      <p class="sec-title">مقارنة عائد المحافظ</p>
-      <div id="comparePortfolios"></div>
-    </div>
-    <div class="card card-pad">
-      <p class="sec-title">أفضل وأسوأ الشركات</p>
-      <div id="compareStocks"></div>
-    </div>
+    <div class="card card-pad"><p class="sec-title">مقارنة عائد المحافظ</p><div id="comparePortfolios"></div></div>
+    <div class="card card-pad"><p class="sec-title">أفضل وأسوأ الشركات</p><div id="compareStocks"></div></div>
   </div>
   <div class="card">
     <div style="padding:.85rem 1.1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
       <span class="sec-title" style="margin:0">حركات الفترة</span>
       <select id="analysis-type" onchange="renderAnalysis()" style="width:150px;font-size:12px">
-        <option value="">كل الأنواع</option>
-        <option value="dividend">أرباح موزعة</option>
-        <option value="sell">بيع</option>
-        <option value="deposit">إيداع</option>
-        <option value="withdrawal">سحب</option>
-        <option value="fee">رسوم</option>
-        <option value="zakat">زكاة</option>
-        <option value="purify">تطهير</option>
+        <option value="">كل الأنواع</option><option value="dividend">أرباح موزعة</option><option value="sell">بيع</option><option value="deposit">إيداع</option><option value="withdrawal">سحب</option><option value="fee">رسوم</option><option value="zakat">زكاة</option><option value="purify">تطهير</option>
       </select>
     </div>
-    <table><thead><tr><th>التاريخ</th><th>المحفظة</th><th>الشركة</th><th>النوع</th><th>المبلغ</th><th>ملاحظة</th></tr></thead>
-    <tbody id="analysisMovTable"></tbody></table>
+    <table><thead><tr><th>التاريخ</th><th>المحفظة</th><th>الشركة</th><th>النوع</th><th>المبلغ</th><th>ملاحظة</th></tr></thead><tbody id="analysisMovTable"></tbody></table>
   </div>
-  <div class="card card-pad" style="margin-top:.5rem">
-    <p class="sec-title">الدخل والخصومات شهرياً</p>
-    <div style="position:relative;height:200px"><canvas id="timelineChart"></canvas></div>
-  </div>
+  <div class="card card-pad" style="margin-top:.5rem"><p class="sec-title">الدخل والخصومات شهرياً</p><div style="position:relative;height:200px"><canvas id="timelineChart"></canvas></div></div>
 </div>
 
 <!-- STOCKS -->
 <div id="tab-stocks" class="panel">
   <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
     <select id="filter-sp" onchange="renderStocksTab()" style="width:180px"><option value="">كل المحافظ</option></select>
-    <select id="filter-sort" onchange="renderStocksTab()" style="width:160px">
-      <option value="pct-desc">الأعلى عائداً</option>
-      <option value="pct-asc">الأقل عائداً</option>
-      <option value="val-desc">الأعلى قيمة</option>
-      <option value="name">الاسم</option>
-    </select>
+    <select id="filter-sort" onchange="renderStocksTab()" style="width:160px"><option value="pct-desc">الأعلى عائداً</option><option value="pct-asc">الأقل عائداً</option><option value="val-desc">الأعلى قيمة</option><option value="name">الاسم</option></select>
   </div>
   <div class="card" style="overflow-x:auto">
-    <table><thead><tr><th>الشركة</th><th>المحفظة</th><th>الكمية</th><th>سعر الشراء</th><th>التكلفة الفعلية</th><th>السعر الحالي</th><th>القيمة</th><th>توزيعات</th><th>رسوم</th><th>تطهير</th><th>ر/خ صافي</th><th>العائد</th><th></th></tr></thead>
-    <tbody id="stocksTable"></tbody></table>
+    <table><thead><tr><th>الشركة</th><th>المحفظة</th><th>الكمية</th><th>متوسط التكلفة</th><th>السعر الحالي</th><th>القيمة</th><th>توزيعات</th><th>رسوم</th><th>تطهير</th><th>ر/خ صافي</th><th>العائد</th><th></th></tr></thead><tbody id="stocksTable"></tbody></table>
   </div>
-  <div class="card card-pad" style="margin-top:.5rem">
-    <p class="sec-title">مقارنة عائد الشركات</p>
-    <div style="position:relative;height:220px"><canvas id="stockBarChart"></canvas></div>
-  </div>
+  <div class="card card-pad" style="margin-top:.5rem"><p class="sec-title">مقارنة عائد الشركات</p><div style="position:relative;height:220px"><canvas id="stockBarChart"></canvas></div></div>
 </div>
 
 <!-- SOLD -->
 <div id="tab-sold" class="panel">
   <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
-    <div class="period-btns">
-      <button class="period-btn active" onclick="setSoldPeriod('all',this)">الكل</button>
-      <button class="period-btn" onclick="setSoldPeriod('ytd',this)">هذه السنة</button>
-      <button class="period-btn" onclick="setSoldPeriod('q',this)">هذا الربع</button>
-      <button class="period-btn" onclick="setSoldPeriod('m',this)">هذا الشهر</button>
-    </div>
+    <div class="period-btns"><button class="period-btn active" onclick="setSoldPeriod('all',this)">الكل</button><button class="period-btn" onclick="setSoldPeriod('ytd',this)">هذه السنة</button><button class="period-btn" onclick="setSoldPeriod('q',this)">هذا الربع</button><button class="period-btn" onclick="setSoldPeriod('m',this)">هذا الشهر</button></div>
     <select id="sold-port-filter" onchange="renderSold()" style="width:170px;font-size:12px"><option value="">كل المحافظ</option></select>
   </div>
   <div id="soldSummaryCards" class="metrics-grid" style="margin-bottom:1rem"></div>
-  <div class="card" style="overflow-x:auto">
-    <table><thead><tr><th>الشركة</th><th>المحفظة</th><th>تاريخ الشراء</th><th>تاريخ البيع</th><th>الكمية</th><th>سعر الشراء</th><th>سعر البيع</th><th>رسوم البيع</th><th>ر/خ محقق</th><th>العائد</th><th>نوع البيع</th></tr></thead>
-    <tbody id="soldTable"></tbody></table>
-  </div>
-  <div class="card card-pad" style="margin-top:.5rem">
-    <p class="sec-title">الأرباح المحققة لكل صفقة</p>
-    <div style="position:relative;height:180px"><canvas id="soldChart"></canvas></div>
-  </div>
+  <div class="card" style="overflow-x:auto"><table><thead><tr><th>الشركة</th><th>المحفظة</th><th>تاريخ الشراء</th><th>تاريخ البيع</th><th>الكمية</th><th>متوسط الشراء</th><th>سعر البيع</th><th>رسوم البيع</th><th>ر/خ محقق</th><th>العائد</th><th>نوع البيع</th></tr></thead><tbody id="soldTable"></tbody></table></div>
+  <div class="card card-pad" style="margin-top:.5rem"><p class="sec-title">الأرباح المحققة</p><div style="position:relative;height:180px"><canvas id="soldChart"></canvas></div></div>
 </div>
 
 <!-- MOVEMENTS -->
 <div id="tab-movements" class="panel">
   <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
     <select id="filter-mp" onchange="renderMovements()" style="width:170px"><option value="">كل المحافظ</option></select>
-    <select id="filter-mt" onchange="renderMovements()" style="width:150px">
-      <option value="">كل الأنواع</option>
-      <option value="dividend">أرباح موزعة</option>
-      <option value="deposit">إيداع</option>
-      <option value="withdrawal">سحب</option>
-      <option value="sell">بيع</option>
-      <option value="fee">رسوم</option>
-      <option value="zakat">زكاة</option>
-      <option value="purify">تطهير</option>
-      <option value="adjust">تعديل سعر</option>
-    </select>
-    <div class="period-btns">
-      <button class="period-btn active" onclick="setMovPeriod('all',this)">الكل</button>
-      <button class="period-btn" onclick="setMovPeriod('ytd',this)">هذه السنة</button>
-      <button class="period-btn" onclick="setMovPeriod('q',this)">هذا الربع</button>
-      <button class="period-btn" onclick="setMovPeriod('m',this)">هذا الشهر</button>
-    </div>
+    <select id="filter-mt" onchange="renderMovements()" style="width:150px"><option value="">كل الأنواع</option><option value="dividend">أرباح موزعة</option><option value="deposit">إيداع</option><option value="withdrawal">سحب</option><option value="sell">بيع</option><option value="fee">رسوم</option><option value="zakat">زكاة</option><option value="purify">تطهير</option><option value="adjust">تعديل سعر</option></select>
+    <div class="period-btns"><button class="period-btn active" onclick="setMovPeriod('all',this)">الكل</button><button class="period-btn" onclick="setMovPeriod('ytd',this)">هذه السنة</button><button class="period-btn" onclick="setMovPeriod('q',this)">هذا الربع</button><button class="period-btn" onclick="setMovPeriod('m',this)">هذا الشهر</button></div>
   </div>
-  <div class="card">
-    <table><thead><tr><th>التاريخ</th><th>المحفظة</th><th>الشركة</th><th>النوع</th><th>المبلغ</th><th>ملاحظة</th><th></th></tr></thead>
-    <tbody id="movTable"></tbody></table>
-  </div>
+  <div class="card"><table><thead><tr><th>التاريخ</th><th>المحفظة</th><th>الشركة</th><th>النوع</th><th>المبلغ</th><th>ملاحظة</th><th></th></tr></thead><tbody id="movTable"></tbody></table></div>
 </div>
 
 <!-- ZAKAT -->
 <div id="tab-zakat" class="panel">
-  <div class="info-box" style="margin-bottom:1rem">
-    ⚠️ <strong>ملاحظة:</strong> بعض الشركات تدفع الزكاة عن المساهمين (كأرامكو والبنوك) — اختر الشركات المشمولة فقط. الحساب يدوي بالكامل.
-  </div>
+  <div class="info-box" style="margin-bottom:1rem">⚠️ <strong>ملاحظة:</strong> بعض الشركات تدفع الزكاة عن المساهمين — اختر الشركات المشمولة فقط. الحساب يدوي بالكامل.</div>
   <div class="grid2" style="margin-bottom:1rem">
     <div class="card card-pad">
       <p class="sec-title">حاسبة الزكاة اليدوية</p>
-      <div style="margin-bottom:8px"><label class="lbl">نسبة الزكاة</label>
-        <select id="zakat-rate" onchange="renderZakat()">
-          <option value="2.5">2.5% (ربع العشر)</option>
-          <option value="2.577">2.577% (حول قمري)</option>
-        </select>
-      </div>
-      <div style="margin-bottom:8px"><label class="lbl">اختر الشركات المشمولة</label>
-        <div id="zakatList" style="display:flex;flex-direction:column;gap:5px;max-height:150px;overflow-y:auto;padding:2px 0"></div>
-      </div>
+      <div style="margin-bottom:8px"><label class="lbl">نسبة الزكاة</label><select id="zakat-rate" onchange="renderZakat()"><option value="2.5">2.5% (ربع العشر)</option><option value="2.577">2.577% (حول قمري)</option></select></div>
+      <div style="margin-bottom:8px"><label class="lbl">اختر الشركات المشمولة</label><div id="zakatList" style="display:flex;flex-direction:column;gap:5px;max-height:150px;overflow-y:auto;padding:2px 0"></div></div>
       <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:.7rem;font-size:12.5px;margin-bottom:.75rem;border:1px solid var(--border)" id="zakatCalc"></div>
       <button class="btn btn-blue" style="width:100%" onclick="recordZakat()">✓ تسجيل دفع الزكاة</button>
     </div>
@@ -324,17 +330,13 @@ tr.srow:hover td{background:var(--bg3)}
       <p class="sec-title">حاسبة التطهير</p>
       <div style="display:grid;gap:8px">
         <div><label class="lbl">الشركة</label><select id="purify-stock" onchange="renderZakat()"></select></div>
-        <div><label class="lbl">نسبة التطهير % (من إفصاح الشركة)</label><input type="number" id="purify-pct" placeholder="مثال: 3.5" min="0" max="100" step="0.01" oninput="renderZakat()"></div>
+        <div><label class="lbl">نسبة التطهير %</label><input type="number" id="purify-pct" placeholder="مثال: 3.5" min="0" max="100" step="0.01" oninput="renderZakat()"></div>
       </div>
       <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:.7rem;margin-top:.75rem;font-size:12.5px;border:1px solid var(--border)" id="purifyCalc"></div>
       <button class="btn btn-blue" style="margin-top:.75rem;width:100%" onclick="recordPurify()">✓ تسجيل التطهير</button>
     </div>
   </div>
-  <div class="card card-pad">
-    <p class="sec-title">سجل الزكاة والتطهير</p>
-    <table><thead><tr><th>التاريخ</th><th>النوع</th><th>الشركة</th><th>المبلغ</th><th>ملاحظة</th><th></th></tr></thead>
-    <tbody id="zakatTable"></tbody></table>
-  </div>
+  <div class="card card-pad"><p class="sec-title">سجل الزكاة والتطهير</p><table><thead><tr><th>التاريخ</th><th>النوع</th><th>الشركة</th><th>المبلغ</th><th>ملاحظة</th><th></th></tr></thead><tbody id="zakatTable"></tbody></table></div>
 </div>
 
 <!-- ADD -->
@@ -342,47 +344,56 @@ tr.srow:hover td{background:var(--bg3)}
   <div class="tabs" id="subTabs">
     <button class="tab active" onclick="switchSub('buy')">🛒 شراء</button>
     <button class="tab" onclick="switchSub('sell')">💰 بيع / تخارج</button>
-    <button class="tab" onclick="switchSub('portfolio')">📁 محفظة جديدة</button>
+    <button class="tab" onclick="switchSub('portfolio')">📁 إدارة المحافظ</button>
     <button class="tab" onclick="switchSub('movement')">📝 حركة أخرى</button>
   </div>
 
-  <!-- شراء -->
+  <!-- BUY -->
   <div id="sub-buy" class="panel active">
     <div class="card card-pad">
       <p class="sec-title">تسجيل شراء</p>
-      <div class="form-grid">
-        <div><label class="lbl">المحفظة</label><select id="s-port"></select></div>
-        <div><label class="lbl">اسم الشركة / رمز السهم</label><input type="text" id="s-name" placeholder="مثال: أرامكو 2222"></div>
-        <div><label class="lbl">عدد الأسهم</label><input type="number" id="s-qty" placeholder="500" min="0" step="any" oninput="previewBuy()"></div>
-        <div><label class="lbl">سعر الشراء (ر.س)</label><input type="number" id="s-buy" placeholder="36.50" step="any" oninput="previewBuy()"></div>
-        <div><label class="lbl">السعر الحالي (ر.س)</label><input type="number" id="s-cur" placeholder="38.20" step="any"></div>
-        <div><label class="lbl">رسوم الشراء (ر.س)</label><input type="number" id="s-fee" placeholder="45" min="0" step="any" value="0" oninput="previewBuy()"></div>
-        <div><label class="lbl">توزيعات مقبوضة (ر.س)</label><input type="number" id="s-div" placeholder="0" min="0" step="any" value="0"></div>
-        <div><label class="lbl">تطهير مدفوع (ر.س)</label><input type="number" id="s-pur" placeholder="0" min="0" step="any" value="0"></div>
-        <div><label class="lbl">تاريخ الشراء</label><input type="date" id="s-date"></div>
+      <div class="buy-mode-btns">
+        <button class="buy-mode-btn new active" id="btn-buy-new" onclick="setBuyMode('new')">🆕<br><strong>شراء جديد</strong><br><span style="font-size:11px">إضافة شركة جديدة للمحفظة</span></button>
+        <button class="buy-mode-btn add" id="btn-buy-add" onclick="setBuyMode('add')">➕<br><strong>زيادة كمية</strong><br><span style="font-size:11px">شراء إضافي مع إعادة حساب متوسط التكلفة</span></button>
       </div>
-      <div class="preview" id="buy-preview"></div>
-      <div style="margin-top:.85rem;display:flex;gap:8px;align-items:center">
-        <button class="btn btn-blue" onclick="addStock()">+ تسجيل الشراء</button>
-        <span id="s-msg" style="font-size:13px"></span>
+      <div id="buy-new-form">
+        <div class="form-grid">
+          <div><label class="lbl">المحفظة</label><select id="s-port"></select></div>
+          <div><label class="lbl">اسم الشركة / رمز السهم</label><input type="text" id="s-name" placeholder="مثال: أرامكو 2222"></div>
+          <div><label class="lbl">عدد الأسهم</label><input type="number" id="s-qty" placeholder="500" min="0" step="any" oninput="previewBuy()"></div>
+          <div><label class="lbl">سعر الشراء (ر.س)</label><input type="number" id="s-buy" placeholder="36.50" step="any" oninput="previewBuy()"></div>
+          <div><label class="lbl">السعر الحالي (ر.س)</label><input type="number" id="s-cur" placeholder="38.20" step="any"></div>
+          <div><label class="lbl">رسوم الشراء (ر.س)</label><input type="number" id="s-fee" placeholder="45" min="0" step="any" value="0" oninput="previewBuy()"></div>
+          <div><label class="lbl">توزيعات مقبوضة (ر.س)</label><input type="number" id="s-div" placeholder="0" min="0" step="any" value="0"></div>
+          <div><label class="lbl">تطهير مدفوع (ر.س)</label><input type="number" id="s-pur" placeholder="0" min="0" step="any" value="0"></div>
+          <div><label class="lbl">تاريخ الشراء</label><input type="date" id="s-date"></div>
+        </div>
+        <div class="preview" id="buy-preview"></div>
+        <div style="margin-top:.85rem;display:flex;gap:8px;align-items:center"><button class="btn btn-blue" onclick="addStock()">+ تسجيل الشراء</button><span id="s-msg" style="font-size:13px"></span></div>
+      </div>
+      <div id="buy-add-form" style="display:none">
+        <div class="form-grid">
+          <div><label class="lbl">المحفظة</label><select id="add-port" onchange="updateAddStocks()"></select></div>
+          <div><label class="lbl">الشركة الموجودة</label><select id="add-stock" onchange="previewAddBuy()"></select></div>
+          <div><label class="lbl">عدد الأسهم الإضافية</label><input type="number" id="add-qty" placeholder="200" min="0" step="any" oninput="previewAddBuy()"></div>
+          <div><label class="lbl">سعر الشراء الجديد (ر.س)</label><input type="number" id="add-price" placeholder="38.00" step="any" oninput="previewAddBuy()"></div>
+          <div><label class="lbl">رسوم الشراء الإضافي (ر.س)</label><input type="number" id="add-fee" placeholder="25" min="0" step="any" value="0" oninput="previewAddBuy()"></div>
+          <div><label class="lbl">تاريخ الشراء</label><input type="date" id="add-date"></div>
+        </div>
+        <div class="preview" id="add-buy-preview"></div>
+        <div style="margin-top:.85rem;display:flex;gap:8px;align-items:center"><button class="btn btn-green" onclick="addToExisting()">+ تسجيل الشراء الإضافي</button><span id="add-msg" style="font-size:13px"></span></div>
       </div>
     </div>
-    <div class="info-box">
-      <strong>التكلفة الفعلية للسهم</strong> = (عدد الأسهم × سعر الشراء + رسوم الشراء) ÷ عدد الأسهم
-    </div>
+    <div class="info-box"><strong>رسوم الشراء</strong> تُضاف للتكلفة الإجمالية وتؤثر على متوسط سعر الشراء<br><strong>زيادة الكمية</strong> يُعاد حساب متوسط التكلفة تلقائياً بناءً على الأسهم القديمة والجديدة والرسوم</div>
   </div>
 
-  <!-- بيع -->
+  <!-- SELL -->
   <div id="sub-sell" class="panel">
     <div class="card card-pad">
       <p class="sec-title">تسجيل بيع / تخارج</p>
       <div class="sell-type-btns">
-        <button class="sell-type-btn partial active" id="btn-partial" onclick="setSellType('partial')">
-          ✂️<br><strong>بيع جزئي</strong><br><span style="font-size:11px">يبقى جزء من الأسهم في المحفظة</span>
-        </button>
-        <button class="sell-type-btn full" id="btn-full" onclick="setSellType('full')">
-          🚪<br><strong>تخارج كامل</strong><br><span style="font-size:11px">بيع كل الأسهم وإغلاق الصفقة</span>
-        </button>
+        <button class="sell-type-btn partial active" id="btn-partial" onclick="setSellType('partial')">✂️<br><strong>بيع جزئي</strong><br><span style="font-size:11px">يبقى جزء من الأسهم</span></button>
+        <button class="sell-type-btn full" id="btn-full" onclick="setSellType('full')">🚪<br><strong>تخارج كامل</strong><br><span style="font-size:11px">بيع كل الأسهم</span></button>
       </div>
       <div class="form-grid">
         <div><label class="lbl">المحفظة</label><select id="sell-port" onchange="updateSellStocks()"></select></div>
@@ -394,89 +405,127 @@ tr.srow:hover td{background:var(--bg3)}
         <div style="grid-column:1/-1"><label class="lbl">ملاحظة</label><input type="text" id="sell-note" placeholder="مثال: تخارج كامل من سابك"></div>
       </div>
       <div class="preview" id="sell-preview"></div>
-      <div style="margin-top:.85rem;display:flex;gap:8px;align-items:center">
-        <button class="btn btn-red" id="sell-submit-btn" onclick="executeSell()">📉 تسجيل البيع</button>
-        <span id="sell-msg" style="font-size:13px"></span>
-      </div>
+      <div style="margin-top:.85rem;display:flex;gap:8px;align-items:center"><button class="btn btn-red" id="sell-submit-btn" onclick="executeSell()">📉 تسجيل البيع</button><span id="sell-msg" style="font-size:13px"></span></div>
     </div>
-    <div class="info-box">
-      <strong>بيع جزئي</strong> — يُعدّل رصيد الأسهم ويبقى الباقي في المحفظة بنفس التكلفة<br>
-      <strong>تخارج كامل</strong> — تُنقل الشركة لسجل المُباعة وتُحسب الأرباح المحققة نهائياً
-    </div>
+    <div class="info-box"><strong>رسوم البيع</strong> تُخصم من العائدات وتؤثر على الربح المحقق<br><strong>التكلفة المستخدمة</strong> هي متوسط تكلفة الشراء المحسوب مع الرسوم</div>
   </div>
 
-  <!-- محفظة -->
+  <!-- PORTFOLIO MGMT -->
   <div id="sub-portfolio" class="panel">
     <div class="card card-pad">
       <p class="sec-title">إضافة محفظة جديدة</p>
       <div class="form-grid">
         <div><label class="lbl">اسم المحفظة</label><input type="text" id="p-name" placeholder="مثال: تداول - أسهم متنوعة"></div>
-        <div><label class="lbl">النوع</label>
-          <select id="p-type">
-            <option value="stocks">أسهم سعودية</option>
-            <option value="us">أسهم أمريكية</option>
-            <option value="funds">صناديق</option>
-            <option value="realty">عقار</option>
-            <option value="other">أخرى</option>
-          </select>
-        </div>
+        <div><label class="lbl">النوع</label><select id="p-type"><option value="stocks">أسهم سعودية</option><option value="us">أسهم أمريكية</option><option value="funds">صناديق</option><option value="realty">عقار</option><option value="other">أخرى</option></select></div>
       </div>
-      <div style="margin-top:.85rem;display:flex;gap:8px;align-items:center">
-        <button class="btn btn-blue" onclick="addPortfolio()">+ إضافة</button>
-        <span id="p-msg" style="font-size:13px"></span>
-      </div>
+      <div style="margin-top:.85rem;display:flex;gap:8px;align-items:center"><button class="btn btn-blue" onclick="addPortfolio()">+ إضافة</button><span id="p-msg" style="font-size:13px"></span></div>
+    </div>
+    <div class="card card-pad">
+      <p class="sec-title">المحافظ الحالية — تعديل الأسماء</p>
+      <table><thead><tr><th>المحفظة</th><th>النوع</th><th>الشركات</th><th>تعديل</th></tr></thead><tbody id="portfolioMgmtTable"></tbody></table>
     </div>
   </div>
 
-  <!-- حركة -->
+  <!-- MOVEMENT -->
   <div id="sub-movement" class="panel">
     <div class="card card-pad">
       <p class="sec-title">تسجيل حركة</p>
       <div class="form-grid">
         <div><label class="lbl">المحفظة</label><select id="m-port" onchange="updateMovStocks()"></select></div>
         <div><label class="lbl">الشركة (اختياري)</label><select id="m-stock"><option value="">— المحفظة كلها —</option></select></div>
-        <div><label class="lbl">النوع</label>
-          <select id="m-type">
-            <option value="dividend">أرباح موزعة</option>
-            <option value="deposit">إيداع</option>
-            <option value="withdrawal">سحب</option>
-            <option value="fee">رسوم شراء</option>
-            <option value="adjust">تعديل سعر السهم</option>
-          </select>
-        </div>
+        <div><label class="lbl">النوع</label><select id="m-type"><option value="dividend">أرباح موزعة</option><option value="deposit">إيداع</option><option value="withdrawal">سحب</option><option value="fee">رسوم شراء</option><option value="adjust">تعديل سعر السهم</option></select></div>
         <div><label class="lbl">المبلغ (ر.س)</label><input type="number" id="m-amount" placeholder="5000" min="0" step="any"></div>
         <div><label class="lbl">التاريخ</label><input type="date" id="m-date"></div>
         <div><label class="lbl">ملاحظة</label><input type="text" id="m-note" placeholder="مثال: توزيعات Q2"></div>
       </div>
-      <div style="margin-top:.85rem;display:flex;gap:8px;align-items:center">
-        <button class="btn btn-blue" onclick="addMovement()">✓ تسجيل</button>
-        <span id="m-msg" style="font-size:13px"></span>
-      </div>
+      <div style="margin-top:.85rem;display:flex;gap:8px;align-items:center"><button class="btn btn-blue" onclick="addMovement()">✓ تسجيل</button><span id="m-msg" style="font-size:13px"></span></div>
     </div>
   </div>
 </div>
-
-</div><!-- end main -->
+</div>
 
 <script>
-let portfolios=[{id:1,name:'تداول - أسهم متنوعة',type:'stocks'},{id:2,name:'صندوق الأسهم',type:'funds'},{id:3,name:'محفظة أمريكية',type:'us'}];
-let stocks=[
-  {id:1,pid:1,name:'أرامكو 2222',qty:1000,buy:34.5,cur:38.2,fee:172,divs:2200,purified:0,buyDate:'2023-06-01'},
-  {id:2,pid:1,name:'الراجحي 1120',qty:300,buy:88.0,cur:95.4,fee:132,divs:1800,purified:0,buyDate:'2023-09-15'},
-  {id:3,pid:1,name:'سابك 2010',qty:200,buy:110.0,cur:104.0,fee:110,divs:600,purified:45,buyDate:'2024-01-10'},
-  {id:4,pid:2,name:'صندوق الأهلي',qty:500,buy:12.0,cur:13.6,fee:30,divs:850,purified:120,buyDate:'2023-03-01'},
-  {id:5,pid:3,name:'Apple AAPL',qty:50,buy:172,cur:198,fee:25,divs:180,purified:0,buyDate:'2023-11-20'},
-];
-let soldStocks=[];
-let movements=[
-  {id:1,pid:1,sid:1,type:'dividend',amount:2200,date:'2025-03-15',note:'توزيعات أرامكو Q1'},
-  {id:2,pid:1,sid:null,type:'zakat',amount:950,date:'2025-01-10',note:'زكاة 1446هـ'},
-  {id:3,pid:1,sid:3,type:'purify',amount:45,date:'2025-04-01',note:'تطهير سابك 2%'},
-  {id:4,pid:2,sid:4,type:'dividend',amount:850,date:'2025-02-20',note:'توزيعات الأهلي'},
-  {id:5,pid:1,sid:2,type:'dividend',amount:1800,date:'2025-05-10',note:'توزيعات الراجحي Q1'},
-];
-let nextPid=4,nextSid=6,nextMid=6,nextXid=1;
-let currentPeriod='all',currentSoldPeriod='all',currentMovPeriod='all',currentSellType='partial';
+const SUPABASE_URL='https://yxxrzgxfhkgpkkvjheau.supabase.co';
+const SUPABASE_KEY='sb_publishable_XeIpyJVWrJRWdhLLmQJA_g_yv7ld3NK';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let currentUser=null;
+
+// AUTH FUNCTIONS
+let loginMode='login';
+function switchLoginTab(mode){
+  loginMode=mode;
+  document.getElementById('tabLogin').classList.toggle('active',mode==='login');
+  document.getElementById('tabRegister').classList.toggle('active',mode==='register');
+  document.getElementById('confirmWrap').style.display=mode==='register'?'block':'none';
+  document.getElementById('loginBtn').textContent=mode==='login'?'دخول':'إنشاء الحساب';
+  document.getElementById('forgotWrap').style.display=mode==='login'?'block':'none';
+  hideAuthMsg();
+}
+function showAuthErr(msg){const e=document.getElementById('loginErr');e.textContent=msg;e.style.display='block';document.getElementById('loginOk').style.display='none';}
+function showAuthOk(msg){const e=document.getElementById('loginOk');e.textContent=msg;e.style.display='block';document.getElementById('loginErr').style.display='none';}
+function hideAuthMsg(){document.getElementById('loginErr').style.display='none';document.getElementById('loginOk').style.display='none';}
+
+async function submitAuth(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const pass=document.getElementById('loginPassword').value;
+  const confirm=document.getElementById('loginConfirm').value;
+  if(!email||!pass){showAuthErr('يرجى إدخال البريد الإلكتروني وكلمة المرور');return;}
+  if(loginMode==='register'&&pass!==confirm){showAuthErr('كلمة المرور غير متطابقة');return;}
+  if(loginMode==='register'&&pass.length<6){showAuthErr('كلمة المرور يجب أن تكون 6 أحرف على الأقل');return;}
+  const btn=document.getElementById('loginBtn');btn.disabled=true;btn.textContent='جاري...';
+  try{
+    let res;
+    if(loginMode==='login'){res=await sb.auth.signInWithPassword({email,password:pass});}
+    else{res=await sb.auth.signUp({email,password:pass});}
+    if(res.error)throw res.error;
+    if(loginMode==='register'&&!res.data.session){showAuthOk('تم إنشاء الحساب! تحقق من بريدك لتأكيد الحساب.');btn.disabled=false;btn.textContent='إنشاء الحساب';return;}
+    // login success handled by onAuthStateChange
+  }catch(e){
+    const msgs={'Invalid login credentials':'البريد أو كلمة المرور غير صحيحة','User already registered':'هذا البريد مسجل مسبقاً — سجّل دخولك','Email not confirmed':'يرجى تأكيد بريدك الإلكتروني أولاً'};
+    showAuthErr(msgs[e.message]||e.message);btn.disabled=false;btn.textContent=loginMode==='login'?'دخول':'إنشاء الحساب';
+  }
+}
+
+async function resetPassword(){
+  const email=document.getElementById('loginEmail').value.trim();
+  if(!email){showAuthErr('أدخل بريدك الإلكتروني أولاً');return;}
+  const{error}=await sb.auth.resetPasswordForEmail(email);
+  if(error)showAuthErr(error.message);
+  else showAuthOk('تم إرسال رابط إعادة التعيين لبريدك');
+}
+
+async function logout(){
+  await sb.auth.signOut();currentUser=null;
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('userBadge').style.display='none';
+  portfolios=[];stocks=[];soldStocks=[];movements=[];
+  renderAll();
+}
+
+function showUserBadge(user){
+  const badge=document.getElementById('userBadge');badge.style.display='flex';
+  const em=user.email||'';document.getElementById('userEmail').textContent=em;
+  document.getElementById('userAvatar').textContent=em.charAt(0).toUpperCase();
+}
+
+// Listen to auth state
+sb.auth.onAuthStateChange(async(event,session)=>{
+  if(session?.user){
+    currentUser=session.user;
+    document.getElementById('loginScreen').style.display='none';
+    showUserBadge(currentUser);
+    await loadAll();
+  } else {
+    currentUser=null;
+    document.getElementById('loginScreen').style.display='flex';
+  }
+});
+
+let portfolios=[],stocks=[],soldStocks=[],movements=[];
+let periodA='all',periodB='all',customFromA='',customToA='',customFromB='',customToB='';
+let yearA='',yearB='',showCompare=false;
+let currentSoldPeriod='all',currentMovPeriod='all',currentSellType='partial',currentBuyMode='new';
+let renamePid=null;
 
 const pTypeLabel={stocks:'أسهم سعودية',us:'أسهم أمريكية',funds:'صناديق',realty:'عقار',other:'أخرى'};
 const pTypeBadge={stocks:'b-stocks',us:'b-us',funds:'b-funds',realty:'b-realty',other:'b-other'};
@@ -487,279 +536,410 @@ const fmt=n=>Math.round(n).toLocaleString('ar-SA');
 const fmt2=n=>parseFloat(n.toFixed(2)).toLocaleString('ar-SA');
 const fmtPct=n=>(n>=0?'+':'')+n.toFixed(1)+'%';
 const msgEl=(id,txt,ok)=>{const e=document.getElementById(id);if(!e)return;e.textContent=txt;e.style.color=ok?'#22C55E':'#EF4444';setTimeout(()=>e.textContent='',3000);}
+const setSync=(s,t)=>{const e=document.getElementById('syncStatus');e.className='sync-status '+s;e.textContent=t;}
+const showLoading=v=>{document.getElementById('loadingOverlay').style.display=v?'flex':'none';}
 
-function getPeriodRange(p){
-  const now=new Date();const y=now.getFullYear();const m=now.getMonth();
-  if(p==='all')return{from:null,to:null};
-  if(p==='ytd')return{from:new Date(y,0,1),to:now};
-  if(p==='q'){const qs=Math.floor(m/3)*3;return{from:new Date(y,qs,1),to:now};}
-  if(p==='m')return{from:new Date(y,m,1),to:now};
+// DB
+async function loadAll(){
+  if(!currentUser)return;
+  showLoading(true);setSync('sync-loading','⏳ جاري التحميل...');
+  try{
+    const uid=currentUser.id;
+    const [p,s,x,m]=await Promise.all([
+      sb.from('portfolios').select('*').eq('user_id',uid).order('id'),
+      sb.from('stocks').select('*').eq('user_id',uid).order('id'),
+      sb.from('sold_stocks').select('*').eq('user_id',uid).order('id'),
+      sb.from('movements').select('*').eq('user_id',uid).order('id')
+    ]);
+    if(p.error||s.error||x.error||m.error)throw new Error();
+    portfolios=p.data||[];stocks=s.data||[];soldStocks=x.data||[];movements=m.data||[];
+    buildYearSelects();setSync('sync-ok','✓ متصل');updateAllSelects();renderAll();
+  }catch(e){setSync('sync-err','✗ خطأ في الاتصال');}
+  showLoading(false);
+}
+async function dbInsert(t,d){const uid=currentUser?.id;const row=uid?{...d,user_id:uid}:d;const{data:r,error}=await sb.from(t).insert(row).select().single();if(error)throw error;return r;}
+async function dbUpdate(t,id,d){const{error}=await sb.from(t).update(d).eq('id',id);if(error)throw error;}
+async function dbDelete(t,id){const{error}=await sb.from(t).delete().eq('id',id);if(error)throw error;}
+
+// YEAR SELECTS
+function buildYearSelects(){
+  const years=new Set();const now=new Date().getFullYear();
+  movements.forEach(m=>{if(m.date)years.add(m.date.substring(0,4));});
+  soldStocks.forEach(x=>{if(x.sell_date)years.add(x.sell_date.substring(0,4));});
+  stocks.forEach(s=>{if(s.buy_date)years.add(s.buy_date.substring(0,4));});
+  for(let y=now;y>=now-5;y--)years.add(String(y));
+  const sorted=[...years].sort((a,b)=>b-a);
+  const makeOpts=(sel)=>sorted.map(y=>`<option value="${y}"${y==sel?' selected':''} >${y}</option>`).join('');
+  const curY=String(now);
+  const eA=document.getElementById('yearSelectA');if(eA){eA.innerHTML=makeOpts(curY);yearA=curY;}
+  const eB=document.getElementById('yearSelectB');if(eB){eB.innerHTML=makeOpts(curY);yearB=curY;}
+  // default period dropdowns
+  periodA='all'; periodB='all';
+  const psA=document.getElementById('periodSelectA');if(psA)psA.value='all';
+  const psB=document.getElementById('periodSelectB');if(psB)psB.value='all';
+}
+
+// PERIOD HELPERS
+function getPeriodRange(p, customFrom, customTo, year){
+  const now=new Date();const y=parseInt(year)||now.getFullYear();const mo=now.getMonth();
+  // quarter helpers
+  const qMap={q1:[0,2],q2:[3,5],q3:[6,8],q4:[9,11]};
+  if(qMap[p]){const[sm,em]=qMap[p];return{from:new Date(y,sm,1),to:new Date(y,em+1,0)};}
+  if(p==='all')return{from:new Date(y,0,1),to:new Date(y,11,31)};
+  if(p==='m')return{from:new Date(now.getFullYear(),mo,1),to:now};
   if(p==='3m')return{from:new Date(now-90*864e5),to:now};
   if(p==='6m')return{from:new Date(now-180*864e5),to:now};
-  if(p==='1y')return{from:new Date(now-365*864e5),to:now};
-  return{from:null,to:null};
+  if(p==='custom'&&customFrom&&customTo)return{from:new Date(customFrom),to:new Date(customTo)};
+  return{from:new Date(y,0,1),to:new Date(y,11,31)};
 }
-function inPeriod(date,p){const {from,to}=getPeriodRange(p);if(!from)return true;const d=new Date(date);return d>=from&&d<=to;}
 
+function periodLabel(p, year){
+  const qNames={q1:'الربع الأول',q2:'الربع الثاني',q3:'الربع الثالث',q4:'الربع الرابع'};
+  if(qNames[p])return `${qNames[p]} ${year}`;
+  if(p==='all')return `سنة ${year} كاملة`;
+  if(p==='m')return 'هذا الشهر';
+  if(p==='3m')return 'آخر 3 أشهر';
+  if(p==='6m')return 'آخر 6 أشهر';
+  if(p==='custom')return 'فترة مخصصة';
+  return year;
+}
+
+function inRange(date,from,to){if(!from)return true;const d=new Date(date);return d>=from&&d<=to;}
+
+function onPeriodChangeA(){periodA=document.getElementById('periodSelectA').value;document.getElementById('customRangeA').style.display=periodA==='custom'?'flex':'none';renderAnalysis();}
+function onPeriodChangeB(){periodB=document.getElementById('periodSelectB').value;document.getElementById('customRangeB').style.display=periodB==='custom'?'flex':'none';renderAnalysis();}
+function onYearChangeA(){yearA=document.getElementById('yearSelectA').value;renderAnalysis();}
+function onYearChangeB(){yearB=document.getElementById('yearSelectB').value;renderAnalysis();}
+// kept for backward compat
+function setPeriodA(p,el){periodA=p;renderAnalysis();}
+function setPeriodB(p,el){periodB=p;renderAnalysis();}
+function toggleCompare(){showCompare=document.getElementById('compareToggle').checked;document.getElementById('comparePeriodB').style.display=showCompare?'block':'none';document.getElementById('compareBlock').style.display=showCompare?'block':'none';renderAnalysis();}
+function setSoldPeriod(p,el){currentSoldPeriod=p;document.querySelectorAll('#tab-sold .period-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderSold();}
+function setMovPeriod(p,el){currentMovPeriod=p;document.querySelectorAll('#tab-movements .period-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderMovements();}
+
+// STATS
+function avgCost(s){return s.qty>0?(s.qty*s.buy+(s.fee||0))/s.qty:s.buy;}
 function stockStats(s){
   const cost=s.qty*s.buy+(s.fee||0);const val=s.qty*s.cur;const divs=s.divs||0;const pur=s.purified||0;
   const pnl=(val-cost)+divs-pur;const pct=cost>0?(pnl/cost*100):0;
-  return{cost,val,divs,pur,fees:s.fee||0,pnl,pct,effectiveBuy:s.qty>0?cost/s.qty:s.buy};
+  return{cost,val,divs,pur,fees:s.fee||0,pnl,pct,avgCost:avgCost(s)};
 }
 function portfolioStats(p){
   const ps=stocks.filter(s=>s.pid===p.id);const movs=movements.filter(m=>m.pid===p.id);
-  const cost=ps.reduce((a,s)=>a+s.qty*s.buy+(s.fee||0),0);
-  const val=ps.reduce((a,s)=>a+s.qty*s.cur,0);
-  const divs=ps.reduce((a,s)=>a+(s.divs||0),0);
-  const fees=ps.reduce((a,s)=>a+(s.fee||0),0);
-  const pur=ps.reduce((a,s)=>a+(s.purified||0),0);
-  const zakat=movs.filter(m=>m.type==='zakat').reduce((a,m)=>a+m.amount,0);
-  const deps=movs.filter(m=>m.type==='deposit').reduce((a,m)=>a+m.amount,0);
-  const wits=movs.filter(m=>m.type==='withdrawal').reduce((a,m)=>a+m.amount,0);
-  const realized=soldStocks.filter(x=>x.pid===p.id).reduce((a,x)=>a+x.realizedPnl,0);
+  const cost=ps.reduce((a,s)=>a+s.qty*s.buy+(s.fee||0),0);const val=ps.reduce((a,s)=>a+s.qty*s.cur,0);
+  const divs=ps.reduce((a,s)=>a+(s.divs||0),0);const fees=ps.reduce((a,s)=>a+(s.fee||0),0);const pur=ps.reduce((a,s)=>a+(s.purified||0),0);
+  const zakat=movs.filter(m=>m.type==='zakat').reduce((a,m)=>a+m.amount,0);const deps=movs.filter(m=>m.type==='deposit').reduce((a,m)=>a+m.amount,0);const wits=movs.filter(m=>m.type==='withdrawal').reduce((a,m)=>a+m.amount,0);
+  const realized=soldStocks.filter(x=>x.pid===p.id).reduce((a,x)=>a+x.realized_pnl,0);
   const totalCost=cost+deps;const pnl=(val-cost)+divs-pur-zakat-wits+realized;
   return{cost,val,divs,fees,pur,zakat,deps,wits,totalCost,pnl,pct:totalCost>0?(pnl/totalCost*100):0,count:ps.length,realized};
 }
-
-let pieChart,barChart,stockBarChart,timelineChart,soldChart;
-function chartDefaults(){return{responsive:true,maintainAspectRatio:false,color:'#8A97B0'};}
-function initCharts(){
-  const gc=(id,type,extra)=>new Chart(document.getElementById(id),{type,data:{labels:[],datasets:[]},options:{...chartDefaults(),...extra}});
-  pieChart=gc('pieChart','doughnut',{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.raw)+' ر.س'}}}});
-  barChart=gc('barChart','bar',{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmtPct(c.raw)}}},scales:{x:{ticks:{font:{size:10},color:'#556075'},grid:{color:'#2A334822'}},y:{ticks:{font:{size:10},color:'#556075',callback:v=>v+'%'},grid:{color:'#2A334855'}}}});
-  stockBarChart=gc('stockBarChart','bar',{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmtPct(c.raw)}}},scales:{x:{ticks:{font:{size:10},color:'#556075',callback:v=>v+'%'},grid:{color:'#2A334855'}},y:{ticks:{font:{size:10},color:'#8A97B0'}}}});
-  timelineChart=gc('timelineChart','bar',{plugins:{legend:{labels:{color:'#8A97B0',font:{size:11}},display:true}},scales:{x:{ticks:{font:{size:10},color:'#556075'},grid:{color:'#2A334822'}},y:{ticks:{font:{size:10},color:'#556075',callback:v=>fmt(v)},grid:{color:'#2A334855'}}}});
-  soldChart=gc('soldChart','bar',{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.raw)+' ر.س'}}},scales:{x:{ticks:{font:{size:10},color:'#556075',autoSkip:false,maxRotation:30},grid:{color:'#2A334822'}},y:{ticks:{font:{size:10},color:'#556075',callback:v=>fmt(v)},grid:{color:'#2A334855'}}}});
+function periodStats(filteredMovs,filteredSold){
+  const divs=filteredMovs.filter(m=>m.type==='dividend').reduce((a,m)=>a+m.amount,0);
+  const realized=filteredSold.reduce((a,x)=>a+x.realized_pnl,0);
+  const fees=filteredMovs.filter(m=>m.type==='fee').reduce((a,m)=>a+m.amount,0);
+  const zakat=filteredMovs.filter(m=>m.type==='zakat').reduce((a,m)=>a+m.amount,0);
+  const purify=filteredMovs.filter(m=>m.type==='purify').reduce((a,m)=>a+m.amount,0);
+  const deps=filteredMovs.filter(m=>m.type==='deposit').reduce((a,m)=>a+m.amount,0);
+  const wits=filteredMovs.filter(m=>m.type==='withdrawal').reduce((a,m)=>a+m.amount,0);
+  return{divs,realized,fees,zakat,purify,deps,wits,net:divs+realized-fees-zakat-purify};
 }
 
+// CHARTS
+let pieChart,barChart,stockBarChart,timelineChart,soldChart;
+function initCharts(){
+  const gc2='#2A334855';const cd={responsive:true,maintainAspectRatio:false,color:'#8A97B0'};
+  const gc=(id,type,ex)=>new Chart(document.getElementById(id),{type,data:{labels:[],datasets:[]},options:{...cd,...ex}});
+  pieChart=gc('pieChart','doughnut',{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.raw)+' ر.س'}}}});
+  barChart=gc('barChart','bar',{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmtPct(c.raw)}}},scales:{x:{ticks:{font:{size:10},color:'#556075'},grid:{color:gc2}},y:{ticks:{font:{size:10},color:'#556075',callback:v=>v+'%'},grid:{color:gc2}}}});
+  stockBarChart=gc('stockBarChart','bar',{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10},color:'#556075',callback:v=>v+'%'},grid:{color:gc2}},y:{ticks:{font:{size:10},color:'#8A97B0'}}}});
+  timelineChart=gc('timelineChart','bar',{plugins:{legend:{labels:{color:'#8A97B0',font:{size:11}},display:true}},scales:{x:{ticks:{font:{size:10},color:'#556075'},grid:{color:gc2}},y:{ticks:{font:{size:10},color:'#556075',callback:v=>fmt(v)},grid:{color:gc2}}}});
+  soldChart=gc('soldChart','bar',{plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10},color:'#556075',autoSkip:false,maxRotation:30},grid:{color:gc2}},y:{ticks:{font:{size:10},color:'#556075',callback:v=>fmt(v)},grid:{color:gc2}}}});
+}
+
+// RENDER
 function renderMetrics(){
   let tC=0,tV=0,tD=0,tF=0,tP=0,tZ=0,tPnl=0,tR=0;
   portfolios.forEach(p=>{const s=portfolioStats(p);tC+=s.totalCost;tV+=s.val;tD+=s.divs;tF+=s.fees;tP+=s.pur;tZ+=s.zakat;tPnl+=s.pnl;tR+=s.realized;});
   const tPct=tC>0?(tPnl/tC*100):0;
-  document.getElementById('metrics').innerHTML=`
-    <div class="metric"><p class="metric-label">إجمالي المستثمر</p><p class="metric-value">${fmt(tC)} ر.س</p></div>
-    <div class="metric"><p class="metric-label">القيمة السوقية</p><p class="metric-value">${fmt(tV)} ر.س</p></div>
-    <div class="metric"><p class="metric-label">أرباح موزعة</p><p class="metric-value pos">+${fmt(tD)} ر.س</p></div>
-    <div class="metric"><p class="metric-label">أرباح محققة (بيع)</p><p class="metric-value ${tR>=0?'pos':'neg'}">${tR>=0?'+':''}${fmt(tR)} ر.س</p></div>
-    <div class="metric"><p class="metric-label">رسوم+تطهير+زكاة</p><p class="metric-value warn">-${fmt(tF+tP+tZ)} ر.س</p></div>
-    <div class="metric"><p class="metric-label">صافي الربح/الخسارة</p><p class="metric-value ${tPnl>=0?'pos':'neg'}">${tPnl>=0?'+':''}${fmt(tPnl)} ر.س</p></div>
-    <div class="metric"><p class="metric-label">العائد الصافي</p><p class="metric-value ${tPct>=0?'pos':'neg'}">${fmtPct(tPct)}</p></div>
-  `;
+  document.getElementById('metrics').innerHTML=`<div class="metric"><p class="metric-label">إجمالي المستثمر</p><p class="metric-value">${fmt(tC)} ر.س</p></div><div class="metric"><p class="metric-label">القيمة السوقية</p><p class="metric-value">${fmt(tV)} ر.س</p></div><div class="metric"><p class="metric-label">أرباح موزعة</p><p class="metric-value pos">+${fmt(tD)} ر.س</p></div><div class="metric"><p class="metric-label">أرباح محققة (بيع)</p><p class="metric-value ${tR>=0?'pos':'neg'}">${tR>=0?'+':''}${fmt(tR)} ر.س</p></div><div class="metric"><p class="metric-label">رسوم+تطهير+زكاة</p><p class="metric-value warn">-${fmt(tF+tP+tZ)} ر.س</p></div><div class="metric"><p class="metric-label">صافي الربح/الخسارة</p><p class="metric-value ${tPnl>=0?'pos':'neg'}">${tPnl>=0?'+':''}${fmt(tPnl)} ر.س</p></div><div class="metric"><p class="metric-label">العائد الصافي</p><p class="metric-value ${tPct>=0?'pos':'neg'}">${fmtPct(tPct)}</p></div>`;
 }
 
 function renderOverview(){
   const c=document.getElementById('portfolioCards');c.innerHTML='';
   portfolios.forEach(p=>{
     const s=portfolioStats(p);const ps=stocks.filter(st=>st.pid===p.id);const cid='col-'+p.id;
-    const rows=ps.map(st=>{const ss=stockStats(st);return `<tr class="srow"><td style="padding-right:1.5rem">${st.name}</td><td>${fmt2(st.qty)}</td><td>${fmt2(st.buy)}</td><td class="muted">${fmt2(ss.effectiveBuy)}</td><td>${fmt2(st.cur)}</td><td>${fmt(ss.val)}</td><td class="pos">+${fmt(ss.divs)}</td><td class="warn">-${fmt(ss.fees)}</td><td class="${ss.pur>0?'warn':'muted'}">-${fmt(ss.pur)}</td><td class="${ss.pnl>=0?'pos':'neg'}">${ss.pnl>=0?'+':''}${fmt(ss.pnl)}</td><td><span class="${ss.pct>=0?'pos':'neg'}">${fmtPct(ss.pct)}</span><div class="pct-bar"><div class="pct-fill" style="width:${Math.min(Math.abs(ss.pct),100)}%;background:${ss.pct>=0?'#22C55E':'#EF4444'}"></div></div></td><td><button class="btn-del" onclick="removeStock(${st.id})">🗑</button></td></tr>`;}).join('');
-    c.innerHTML+=`<div class="card"><div class="card-head" onclick="toggleCol('${cid}')"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="chevron">▾</span><span style="font-weight:600;font-size:13.5px">${p.name}</span><span class="badge ${pTypeBadge[p.type]}">${pTypeLabel[p.type]}</span><span style="font-size:11px;color:var(--text3)">${s.count} شركة</span></div><div style="display:flex;gap:12px;font-size:12px;flex-wrap:wrap"><span class="muted">القيمة: <strong style="color:var(--text)">${fmt(s.val)}</strong></span><span class="pos">+${fmt(s.divs)} أرباح</span><span class="warn">-${fmt(s.fees+s.pur+s.zakat)} خصومات</span><span class="${s.pct>=0?'pos':'neg'}">صافي: <strong>${fmtPct(s.pct)}</strong></span></div></div><div id="${cid}" style="overflow-x:auto">${ps.length?`<table><thead><tr><th>الشركة</th><th>الكمية</th><th>سعر الشراء</th><th>التكلفة الفعلية</th><th>السعر الحالي</th><th>القيمة</th><th>توزيعات</th><th>رسوم</th><th>تطهير</th><th>ر/خ صافي</th><th>العائد</th><th></th></tr></thead><tbody>${rows}</tbody></table>`:`<p style="padding:1rem;color:var(--text2);font-size:13px">لا توجد شركات — أضف من تبويب "إضافة"</p>`}</div></div>`;
+    const rows=ps.map(st=>{const ss=stockStats(st);return `<tr class="srow"><td style="padding-right:1.5rem"><strong>${st.name}</strong><div class="qa-btns"><button class="qa-btn qa-buy" onclick="quickBuy(${st.id})">+ شراء</button><button class="qa-btn qa-sell" onclick="quickSell(${st.id})">بيع</button><button class="qa-btn qa-edit" onclick="quickEditPrice(${st.id})">تعديل السعر</button></div></td><td>${fmt2(st.qty)}</td><td class="muted">${fmt2(ss.avgCost)}</td><td>${fmt2(st.cur)}</td><td>${fmt(ss.val)}</td><td class="pos">+${fmt(ss.divs)}</td><td class="warn">-${fmt(ss.fees)}</td><td class="${ss.pur>0?'warn':'muted'}">-${fmt(ss.pur)}</td><td class="${ss.pnl>=0?'pos':'neg'}">${ss.pnl>=0?'+':''}${fmt(ss.pnl)}</td><td><span class="${ss.pct>=0?'pos':'neg'}">${fmtPct(ss.pct)}</span><div class="pct-bar"><div class="pct-fill" style="width:${Math.min(Math.abs(ss.pct),100)}%;background:${ss.pct>=0?'#22C55E':'#EF4444'}"></div></div></td><td><button class="btn-del" onclick="removeStock(${st.id})">🗑</button></td></tr>`;}).join('');
+    c.innerHTML+=`<div class="card"><div class="card-head"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap" class="card-head-click" onclick="toggleCol('${cid}')"><span class="chevron">▾</span><span style="font-weight:600;font-size:13.5px">${p.name}</span><span class="badge ${pTypeBadge[p.type]}">${pTypeLabel[p.type]}</span><span style="font-size:11px;color:var(--text3)">${s.count} شركة</span></div><div style="display:flex;gap:10px;align-items:center"><div style="display:flex;gap:12px;font-size:12px;flex-wrap:wrap"><span class="muted">القيمة: <strong style="color:var(--text)">${fmt(s.val)}</strong></span><span class="pos">+${fmt(s.divs)} أرباح</span><span class="${s.pct>=0?'pos':'neg'}">صافي: <strong>${fmtPct(s.pct)}</strong></span></div><button class="qa-btn qa-edit" style="font-size:11px;white-space:nowrap" onclick="openRenameModal(${p.id})">✏️ تعديل الاسم</button></div></div><div id="${cid}" style="overflow-x:auto">${ps.length?`<table><thead><tr><th>الشركة</th><th>الكمية</th><th>متوسط التكلفة</th><th>السعر الحالي</th><th>القيمة</th><th>توزيعات</th><th>رسوم</th><th>تطهير</th><th>ر/خ صافي</th><th>العائد</th><th></th></tr></thead><tbody>${rows}</tbody></table>`:`<p style="padding:1rem;color:var(--text2);font-size:13px">لا توجد شركات</p>`}</div></div>`;
   });
   pieChart.data={labels:portfolios.map(p=>p.name.split(' - ')[0]),datasets:[{data:portfolios.map(p=>portfolioStats(p).val),backgroundColor:pal.slice(0,portfolios.length),borderWidth:2,borderColor:'transparent'}]};pieChart.update();
-  const pcts=portfolios.map(p=>parseFloat(portfolioStats(p).pct.toFixed(1)));
-  barChart.data={labels:portfolios.map(p=>p.name.split(' - ')[0]),datasets:[{data:pcts,backgroundColor:pcts.map(v=>v>=0?'#22C55E':'#EF4444'),borderRadius:4}]};barChart.update();
+  const pcts=portfolios.map(p=>parseFloat(portfolioStats(p).pct.toFixed(1)));barChart.data={labels:portfolios.map(p=>p.name.split(' - ')[0]),datasets:[{data:pcts,backgroundColor:pcts.map(v=>v>=0?'#22C55E':'#EF4444'),borderRadius:4}]};barChart.update();
+  renderPortfolioMgmt();
+}
+
+function renderPortfolioMgmt(){
+  const tb=document.getElementById('portfolioMgmtTable');if(!tb)return;tb.innerHTML='';
+  portfolios.forEach(p=>{const cnt=stocks.filter(s=>s.pid===p.id).length;tb.innerHTML+=`<tr><td><strong>${p.name}</strong></td><td><span class="badge ${pTypeBadge[p.type]}">${pTypeLabel[p.type]}</span></td><td>${cnt}</td><td><button class="btn btn-sm" onclick="openRenameModal(${p.id})" style="font-size:11px">✏️ تعديل</button></td></tr>`;});
 }
 
 function renderStocksTab(){
   const fp=document.getElementById('filter-sp').value;const sort=document.getElementById('filter-sort').value;
   let list=stocks.filter(s=>fp?s.pid==fp:true);
-  if(sort==='pct-desc')list.sort((a,b)=>stockStats(b).pct-stockStats(a).pct);
-  else if(sort==='pct-asc')list.sort((a,b)=>stockStats(a).pct-stockStats(b).pct);
-  else if(sort==='val-desc')list.sort((a,b)=>stockStats(b).val-stockStats(a).val);
-  else list.sort((a,b)=>a.name.localeCompare(b.name,'ar'));
+  if(sort==='pct-desc')list.sort((a,b)=>stockStats(b).pct-stockStats(a).pct);else if(sort==='pct-asc')list.sort((a,b)=>stockStats(a).pct-stockStats(b).pct);else if(sort==='val-desc')list.sort((a,b)=>stockStats(b).val-stockStats(a).val);else list.sort((a,b)=>a.name.localeCompare(b.name,'ar'));
   const tbody=document.getElementById('stocksTable');tbody.innerHTML='';
-  list.forEach(s=>{const ss=stockStats(s);const p=portfolios.find(x=>x.id===s.pid);tbody.innerHTML+=`<tr class="srow"><td><strong>${s.name}</strong></td><td><span class="badge ${pTypeBadge[p?p.type:'other']}">${p?p.name.split(' - ')[0]:'-'}</span></td><td>${fmt2(s.qty)}</td><td>${fmt2(s.buy)}</td><td class="muted">${fmt2(ss.effectiveBuy)}</td><td>${fmt2(s.cur)}</td><td>${fmt(ss.val)}</td><td class="pos">+${fmt(ss.divs)}</td><td class="warn">-${fmt(ss.fees)}</td><td class="${ss.pur>0?'warn':'muted'}">-${fmt(ss.pur)}</td><td class="${ss.pnl>=0?'pos':'neg'}">${ss.pnl>=0?'+':''}${fmt(ss.pnl)}</td><td><span class="${ss.pct>=0?'pos':'neg'}">${fmtPct(ss.pct)}</span><div class="pct-bar"><div class="pct-fill" style="width:${Math.min(Math.abs(ss.pct),100)}%;background:${ss.pct>=0?'#22C55E':'#EF4444'}"></div></div></td><td><button class="btn-del" onclick="removeStock(${s.id})">🗑</button></td></tr>`;});
-  const top=list.slice(0,12);
-  stockBarChart.data={labels:top.map(s=>s.name),datasets:[{data:top.map(s=>parseFloat(stockStats(s).pct.toFixed(1))),backgroundColor:top.map(s=>stockStats(s).pct>=0?'#22C55E':'#EF4444'),borderRadius:3}]};
-  document.getElementById('stockBarChart').parentElement.style.height=Math.max(180,top.length*32+50)+'px';
-  stockBarChart.update();
+  list.forEach(s=>{const ss=stockStats(s);const p=portfolios.find(x=>x.id===s.pid);tbody.innerHTML+=`<tr class="srow"><td><strong>${s.name}</strong></td><td><span class="badge ${pTypeBadge[p?p.type:'other']}">${p?p.name.split(' - ')[0]:'-'}</span></td><td>${fmt2(s.qty)}</td><td class="muted">${fmt2(ss.avgCost)}</td><td>${fmt2(s.cur)}</td><td>${fmt(ss.val)}</td><td class="pos">+${fmt(ss.divs)}</td><td class="warn">-${fmt(ss.fees)}</td><td class="${ss.pur>0?'warn':'muted'}">-${fmt(ss.pur)}</td><td class="${ss.pnl>=0?'pos':'neg'}">${ss.pnl>=0?'+':''}${fmt(ss.pnl)}</td><td><span class="${ss.pct>=0?'pos':'neg'}">${fmtPct(ss.pct)}</span><div class="pct-bar"><div class="pct-fill" style="width:${Math.min(Math.abs(ss.pct),100)}%;background:${ss.pct>=0?'#22C55E':'#EF4444'}"></div></div></td><td><button class="btn-del" onclick="removeStock(${s.id})">🗑</button></td></tr>`;});
+  const top=list.slice(0,12);stockBarChart.data={labels:top.map(s=>s.name),datasets:[{data:top.map(s=>parseFloat(stockStats(s).pct.toFixed(1))),backgroundColor:top.map(s=>stockStats(s).pct>=0?'#22C55E':'#EF4444'),borderRadius:3}]};document.getElementById('stockBarChart').parentElement.style.height=Math.max(180,top.length*32+50)+'px';stockBarChart.update();
 }
 
-function setPeriod(p,el){currentPeriod=p;document.querySelectorAll('#tab-analysis .period-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderAnalysis();}
-function setSoldPeriod(p,el){currentSoldPeriod=p;document.querySelectorAll('#tab-sold .period-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderSold();}
-function setMovPeriod(p,el){currentMovPeriod=p;document.querySelectorAll('#tab-movements .period-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderMovements();}
+function metricHTML(stats,label){
+  return `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:.75rem 1rem"><p style="font-size:10px;color:var(--text2);margin:0 0 6px;text-transform:uppercase;letter-spacing:.4px">${label}</p><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px"><div><div style="font-size:10px;color:var(--text2)">أرباح موزعة</div><div style="font-size:14px;font-weight:600;color:var(--green)">+${fmt(stats.divs)}</div></div><div><div style="font-size:10px;color:var(--text2)">أرباح بيع</div><div style="font-size:14px;font-weight:600;color:${stats.realized>=0?'#22C55E':'#EF4444'}">${stats.realized>=0?'+':''}${fmt(stats.realized)}</div></div><div><div style="font-size:10px;color:var(--text2)">رسوم وخصومات</div><div style="font-size:14px;font-weight:600;color:var(--amber)">-${fmt(stats.fees+stats.zakat+stats.purify)}</div></div><div><div style="font-size:10px;color:var(--text2)">إيداعات</div><div style="font-size:14px;font-weight:600">${fmt(stats.deps)}</div></div><div><div style="font-size:10px;color:var(--text2)">سحوبات</div><div style="font-size:14px;font-weight:600;color:var(--red)">-${fmt(stats.wits)}</div></div><div><div style="font-size:10px;color:var(--text2)">صافي الدخل</div><div style="font-size:14px;font-weight:600;color:${stats.net>=0?'#22C55E':'#EF4444'}">${stats.net>=0?'+':''}${fmt(stats.net)}</div></div></div></div>`;
+}
 
 function renderAnalysis(){
+  const cfA=document.getElementById('customFromA').value;const ctA=document.getElementById('customToA').value;
+  const cfB=document.getElementById('customFromB').value;const ctB=document.getElementById('customToB').value;
+  const yA=yearA||document.getElementById('yearSelectA').value||String(new Date().getFullYear());
+  const yB=yearB||document.getElementById('yearSelectB').value||String(new Date().getFullYear());
+  const {from:fA,to:tA}=getPeriodRange(periodA,cfA,ctA,yA);
+  // Update period labels
+  const lbA=document.getElementById('periodLabelA');if(lbA)lbA.textContent='الفترة: '+periodLabel(periodA,yA);
+  const lbB=document.getElementById('periodLabelB');if(lbB)lbB.textContent='الفترة: '+periodLabel(periodB,yB);
+  const movA=movements.filter(m=>inRange(m.date,fA,tA));const {from:fB2,to:tB2}=getPeriodRange(periodB,cfB,ctB,yB);
+  const soldA=soldStocks.filter(x=>inRange(x.sell_date,fA,tA));
+  const statsA=periodStats(movA,soldA);
   const typeF=document.getElementById('analysis-type').value;
-  const fMovs=movements.filter(m=>inPeriod(m.date,currentPeriod)&&(typeF?m.type===typeF:true));
-  const fSold=soldStocks.filter(x=>inPeriod(x.sellDate,currentPeriod));
-  const divs=movements.filter(m=>m.type==='dividend'&&inPeriod(m.date,currentPeriod)).reduce((a,m)=>a+m.amount,0);
-  const realized=fSold.reduce((a,x)=>a+x.realizedPnl,0);
-  const fees=movements.filter(m=>m.type==='fee'&&inPeriod(m.date,currentPeriod)).reduce((a,m)=>a+m.amount,0);
-  const zakat=movements.filter(m=>m.type==='zakat'&&inPeriod(m.date,currentPeriod)).reduce((a,m)=>a+m.amount,0);
-  const purify=movements.filter(m=>m.type==='purify'&&inPeriod(m.date,currentPeriod)).reduce((a,m)=>a+m.amount,0);
-  const deps=movements.filter(m=>m.type==='deposit'&&inPeriod(m.date,currentPeriod)).reduce((a,m)=>a+m.amount,0);
-  const wits=movements.filter(m=>m.type==='withdrawal'&&inPeriod(m.date,currentPeriod)).reduce((a,m)=>a+m.amount,0);
-  const net=divs+realized-fees-zakat-purify;
-  document.getElementById('analysisMetrics').innerHTML=`
-    <div class="metric"><p class="metric-label">أرباح موزعة</p><p class="metric-value pos">+${fmt(divs)} ر.س</p></div>
-    <div class="metric"><p class="metric-label">أرباح بيع محققة</p><p class="metric-value ${realized>=0?'pos':'neg'}">${realized>=0?'+':''}${fmt(realized)} ر.س</p></div>
-    <div class="metric"><p class="metric-label">رسوم+زكاة+تطهير</p><p class="metric-value warn">-${fmt(fees+zakat+purify)} ر.س</p></div>
-    <div class="metric"><p class="metric-label">إيداعات</p><p class="metric-value">${fmt(deps)} ر.س</p></div>
-    <div class="metric"><p class="metric-label">سحوبات</p><p class="metric-value neg">-${fmt(wits)} ر.س</p></div>
-    <div class="metric"><p class="metric-label">صافي الدخل</p><p class="metric-value ${net>=0?'pos':'neg'}">${net>=0?'+':''}${fmt(net)} ر.س</p></div>
-  `;
+
+  document.getElementById('analysisMetrics').innerHTML=metricHTML(statsA,'الفترة الأولى');
+
+  if(showCompare){
+    const{from:fB,to:tB}=getPeriodRange(periodB,cfB,ctB,yearB);
+    const movB=movements.filter(m=>inRange(m.date,fB2,tB2));const soldB=soldStocks.filter(x=>inRange(x.sell_date,fB2,tB2));const statsB=periodStats(movB,soldB);
+    const lA=periodLabel(periodA,yA);const lB=periodLabel(periodB,yB);
+    document.getElementById('compareVsLabel').textContent=`مقارنة: ${lA} مقابل ${lB}`;
+    document.getElementById('compareMetrics').innerHTML=metricHTML(statsB,'الفترة الثانية');
+    document.getElementById('compareBlock').style.display='block';
+  } else {document.getElementById('compareBlock').style.display='none';}
+
   const maxV=Math.max(...portfolios.map(p=>Math.abs(portfolioStats(p).pct)),1);
   document.getElementById('comparePortfolios').innerHTML=portfolios.map((p,i)=>{const s=portfolioStats(p);const w=Math.min(Math.abs(s.pct)/maxV*100,100);return `<div class="compare-bar"><span style="min-width:90px;font-size:11px;color:var(--text2)">${p.name.split(' - ')[0]}</span><div class="compare-fill" style="width:${w}%;background:${pal[i]}"></div><span style="font-size:12px;font-weight:600;color:${s.pct>=0?'#22C55E':'#EF4444'}">${fmtPct(s.pct)}</span></div>`;}).join('');
-  const sorted=[...stocks].sort((a,b)=>stockStats(b).pct-stockStats(a).pct);
-  const maxSV=Math.max(...sorted.map(s=>Math.abs(stockStats(s).pct)),1);
-  const compHTML=(list,label,color)=>`<div style="font-size:11px;color:var(--text2);margin:8px 0 4px;font-weight:500">${label}</div>`+list.map(s=>{const ss=stockStats(s);return `<div class="compare-bar"><span style="min-width:80px;font-size:11px;color:var(--text2)">${s.name}</span><div class="compare-fill" style="width:${Math.min(Math.abs(ss.pct)/maxSV*100,100)}%;background:${color}"></div><span style="font-size:12px;font-weight:600;color:${ss.pct>=0?'#22C55E':'#EF4444'}">${fmtPct(ss.pct)}</span></div>`;}).join('');
-  document.getElementById('compareStocks').innerHTML=compHTML(sorted.slice(0,3),'🏆 الأفضل أداءً','#22C55E')+compHTML(sorted.slice(-3).reverse(),'📉 الأضعف أداءً','#EF4444');
-  const tbody=document.getElementById('analysisMovTable');tbody.innerHTML='';
-  const sl=[...fMovs].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,20);
+  const sorted=[...stocks].sort((a,b)=>stockStats(b).pct-stockStats(a).pct);const maxSV=Math.max(...sorted.map(s=>Math.abs(stockStats(s).pct)),1);
+  const cmpH=(list,label,color)=>`<div style="font-size:11px;color:var(--text2);margin:8px 0 4px;font-weight:500">${label}</div>`+list.map(s=>{const ss=stockStats(s);return `<div class="compare-bar"><span style="min-width:80px;font-size:11px;color:var(--text2)">${s.name}</span><div class="compare-fill" style="width:${Math.min(Math.abs(ss.pct)/maxSV*100,100)}%;background:${color}"></div><span style="font-size:12px;font-weight:600;color:${ss.pct>=0?'#22C55E':'#EF4444'}">${fmtPct(ss.pct)}</span></div>`;}).join('');
+  document.getElementById('compareStocks').innerHTML=cmpH(sorted.slice(0,3),'🏆 الأفضل أداءً','#22C55E')+cmpH(sorted.slice(-3).reverse(),'📉 الأضعف أداءً','#EF4444');
+
+  const filtMovs=movA.filter(m=>typeF?m.type===typeF:true);const tbody=document.getElementById('analysisMovTable');tbody.innerHTML='';const sl=[...filtMovs].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,20);
   if(!sl.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--text2)">لا توجد حركات في هذه الفترة</td></tr>';}
-  else sl.forEach(m=>{const p=portfolios.find(x=>x.id===m.pid);const s=m.sid?stocks.find(x=>x.id===m.sid):null;const isOut=['withdrawal','fee','zakat','purify','sell'].includes(m.type);tbody.innerHTML+=`<tr><td>${m.date}</td><td style="font-size:11px">${p?p.name:'-'}</td><td style="font-size:11px;color:var(--text2)">${s?s.name:(m.stockName||'—')}</td><td><span class="badge ${movBadge[m.type]}">${movLabel[m.type]}</span></td><td class="${isOut?'neg':'pos'}">${isOut?'-':'+'}${fmt(m.amount)}</td><td style="font-size:11px;color:var(--text2)">${m.note||'-'}</td></tr>`;});
-  const months={};fMovs.forEach(m=>{const mo=m.date.substring(0,7);if(!months[mo])months[mo]={in:0,out:0};if(['dividend','deposit'].includes(m.type))months[mo].in+=m.amount;else if(['withdrawal','fee','zakat','purify','sell'].includes(m.type))months[mo].out+=m.amount;});
-  const mk=Object.keys(months).sort();
-  timelineChart.data={labels:mk,datasets:[{label:'دخل',data:mk.map(k=>months[k].in),backgroundColor:'#22C55E88',borderRadius:3},{label:'خصومات',data:mk.map(k=>-months[k].out),backgroundColor:'#EF444488',borderRadius:3}]};
-  timelineChart.update();
+  else sl.forEach(m=>{const p=portfolios.find(x=>x.id===m.pid);const s=m.sid?stocks.find(x=>x.id===m.sid):null;const isOut=['withdrawal','fee','zakat','purify','sell'].includes(m.type);tbody.innerHTML+=`<tr><td>${m.date}</td><td style="font-size:11px">${p?p.name:'-'}</td><td style="font-size:11px;color:var(--text2)">${s?s.name:(m.stock_name||'—')}</td><td><span class="badge ${movBadge[m.type]}">${movLabel[m.type]}</span></td><td class="${isOut?'neg':'pos'}">${isOut?'-':'+'}${fmt(m.amount)}</td><td style="font-size:11px;color:var(--text2)">${m.note||'-'}</td></tr>`;});
+  const months={};movA.forEach(m=>{const mo=m.date.substring(0,7);if(!months[mo])months[mo]={in:0,out:0};if(['dividend','deposit'].includes(m.type))months[mo].in+=m.amount;else if(['withdrawal','fee','zakat','purify','sell'].includes(m.type))months[mo].out+=m.amount;});
+  const mk=Object.keys(months).sort();timelineChart.data={labels:mk,datasets:[{label:'دخل',data:mk.map(k=>months[k].in),backgroundColor:'#22C55E88',borderRadius:3},{label:'خصومات',data:mk.map(k=>-months[k].out),backgroundColor:'#EF444488',borderRadius:3}]};timelineChart.update();
 }
 
 function renderSold(){
-  const fp=document.getElementById('sold-port-filter').value;
-  let list=soldStocks.filter(x=>(fp?x.pid==fp:true)&&inPeriod(x.sellDate,currentSoldPeriod)).sort((a,b)=>b.sellDate.localeCompare(a.sellDate));
-  const totalR=list.reduce((a,x)=>a+x.realizedPnl,0);const wins=list.filter(x=>x.realizedPnl>0).length;
+  const fp=document.getElementById('sold-port-filter').value;const curY=String(new Date().getFullYear());const {from,to}=getPeriodRange(currentSoldPeriod,'','',curY);
+  let list=soldStocks.filter(x=>(fp?x.pid==fp:true)&&inRange(x.sell_date,from,to)).sort((a,b)=>b.sell_date.localeCompare(a.sell_date));
+  const totalR=list.reduce((a,x)=>a+x.realized_pnl,0);const wins=list.filter(x=>x.realized_pnl>0).length;
   document.getElementById('soldSummaryCards').innerHTML=list.length?`<div class="metric"><p class="metric-label">إجمالي الأرباح المحققة</p><p class="metric-value ${totalR>=0?'pos':'neg'}">${totalR>=0?'+':''}${fmt(totalR)} ر.س</p></div><div class="metric"><p class="metric-label">عدد الصفقات</p><p class="metric-value">${list.length}</p></div><div class="metric"><p class="metric-label">صفقات رابحة</p><p class="metric-value pos">${wins} / ${list.length}</p></div><div class="metric"><p class="metric-label">نسبة الفوز</p><p class="metric-value ${wins/list.length>=0.5?'pos':'neg'}">${list.length?Math.round(wins/list.length*100):0}%</p></div>`:'';
   const tbody=document.getElementById('soldTable');tbody.innerHTML='';
-  if(!list.length){tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:1.5rem;color:var(--text2)">لا توجد صفقات مُغلقة في هذه الفترة</td></tr>';soldChart.data={labels:[],datasets:[]};soldChart.update();return;}
-  list.forEach(x=>{const p=portfolios.find(pp=>pp.id===x.pid);tbody.innerHTML+=`<tr class="srow"><td><strong>${x.name}</strong></td><td style="font-size:11px">${p?p.name:'-'}</td><td class="muted">${x.buyDate||'-'}</td><td class="muted">${x.sellDate}</td><td>${fmt2(x.soldQty)}</td><td>${fmt2(x.buy)}</td><td>${fmt2(x.sellPrice)}</td><td class="warn">-${fmt(x.sellFee)}</td><td class="${x.realizedPnl>=0?'pos':'neg'}">${x.realizedPnl>=0?'+':''}${fmt(x.realizedPnl)}</td><td><span class="${x.realizedPct>=0?'pos':'neg'}">${fmtPct(x.realizedPct)}</span></td><td><span class="badge ${x.isPartial?'b-fee':'b-sell'}">${x.isPartial?'جزئي':'كامل'}</span></td></tr>`;});
-  soldChart.data={labels:list.map(x=>x.name),datasets:[{data:list.map(x=>x.realizedPnl),backgroundColor:list.map(x=>x.realizedPnl>=0?'#22C55E88':'#EF444488'),borderRadius:3}]};soldChart.update();
+  if(!list.length){tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:1.5rem;color:var(--text2)">لا توجد صفقات مُغلقة</td></tr>';soldChart.data={labels:[],datasets:[]};soldChart.update();return;}
+  list.forEach(x=>{const p=portfolios.find(pp=>pp.id===x.pid);tbody.innerHTML+=`<tr class="srow"><td><strong>${x.name}</strong></td><td style="font-size:11px">${p?p.name:'-'}</td><td class="muted">${x.buy_date||'-'}</td><td class="muted">${x.sell_date}</td><td>${fmt2(x.sold_qty)}</td><td>${fmt2(x.buy_price)}</td><td>${fmt2(x.sell_price)}</td><td class="warn">-${fmt(x.sell_fee)}</td><td class="${x.realized_pnl>=0?'pos':'neg'}">${x.realized_pnl>=0?'+':''}${fmt(x.realized_pnl)}</td><td><span class="${x.realized_pct>=0?'pos':'neg'}">${fmtPct(x.realized_pct)}</span></td><td><span class="badge ${x.is_partial?'b-fee':'b-sell'}">${x.is_partial?'جزئي':'كامل'}</span></td></tr>`;});
+  soldChart.data={labels:list.map(x=>x.name),datasets:[{data:list.map(x=>x.realized_pnl),backgroundColor:list.map(x=>x.realized_pnl>=0?'#22C55E88':'#EF444488'),borderRadius:3}]};soldChart.update();
 }
 
 function renderMovements(){
-  const fp=document.getElementById('filter-mp').value;const ft=document.getElementById('filter-mt').value;
-  let list=[...movements].filter(m=>(fp?m.pid==fp:true)&&(ft?m.type===ft:true)&&inPeriod(m.date,currentMovPeriod)).sort((a,b)=>b.date.localeCompare(a.date));
+  const fp=document.getElementById('filter-mp').value;const ft=document.getElementById('filter-mt').value;const curY2=String(new Date().getFullYear());const{from,to}=getPeriodRange(currentMovPeriod,'','',curY2);
+  let list=[...movements].filter(m=>(fp?m.pid==fp:true)&&(ft?m.type===ft:true)&&inRange(m.date,from,to)).sort((a,b)=>b.date.localeCompare(a.date));
   const tbody=document.getElementById('movTable');tbody.innerHTML='';
   if(!list.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--text2)">لا توجد حركات</td></tr>';return;}
-  list.forEach(m=>{const p=portfolios.find(x=>x.id===m.pid);const s=m.sid?stocks.find(x=>x.id===m.sid):null;const isOut=['withdrawal','fee','zakat','purify','sell'].includes(m.type);tbody.innerHTML+=`<tr><td>${m.date}</td><td style="font-size:11px">${p?p.name:'-'}</td><td style="font-size:11px;color:var(--text2)">${s?s.name:(m.stockName||'—')}</td><td><span class="badge ${movBadge[m.type]}">${movLabel[m.type]}</span></td><td class="${isOut?'neg':'pos'}">${isOut?'-':'+'}${fmt(m.amount)}</td><td style="font-size:11px;color:var(--text2)">${m.note||'-'}</td><td><button class="btn-del" onclick="removeMovement(${m.id})">🗑</button></td></tr>`;});
+  list.forEach(m=>{const p=portfolios.find(x=>x.id===m.pid);const s=m.sid?stocks.find(x=>x.id===m.sid):null;const isOut=['withdrawal','fee','zakat','purify','sell'].includes(m.type);tbody.innerHTML+=`<tr><td>${m.date}</td><td style="font-size:11px">${p?p.name:'-'}</td><td style="font-size:11px;color:var(--text2)">${s?s.name:(m.stock_name||'—')}</td><td><span class="badge ${movBadge[m.type]}">${movLabel[m.type]}</span></td><td class="${isOut?'neg':'pos'}">${isOut?'-':'+'}${fmt(m.amount)}</td><td style="font-size:11px;color:var(--text2)">${m.note||'-'}</td><td><button class="btn-del" onclick="removeMovement(${m.id})">🗑</button></td></tr>`;});
 }
 
 function renderZakat(){
-  const rate=parseFloat(document.getElementById('zakat-rate').value)/100;
-  const listEl=document.getElementById('zakatList');
+  const rate=parseFloat(document.getElementById('zakat-rate').value)/100;const listEl=document.getElementById('zakatList');
   if(listEl.dataset.built!='1'){listEl.innerHTML='';stocks.forEach(s=>{const d=document.createElement('label');d.style.cssText='display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;color:var(--text)';d.innerHTML=`<input type="checkbox" data-sid="${s.id}" style="width:auto;accent-color:var(--blue)" onchange="renderZakat()"> ${s.name} (${fmt(s.qty*s.cur)} ر.س)`;listEl.appendChild(d);});listEl.dataset.built='1';}
-  const checked=[...listEl.querySelectorAll('input:checked')].map(i=>parseInt(i.dataset.sid));
-  let total=0;let rows='';
-  checked.forEach(sid=>{const s=stocks.find(x=>x.id===sid);if(!s)return;const v=s.qty*s.cur;const z=v*rate;total+=z;rows+=`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;border-bottom:1px solid var(--border)"><span>${s.name}</span><span class="warn">${fmt(z)} ر.س</span></div>`;});
+  const checked=[...listEl.querySelectorAll('input:checked')].map(i=>parseInt(i.dataset.sid));let total=0;let rows='';checked.forEach(sid=>{const s=stocks.find(x=>x.id===sid);if(!s)return;const v=s.qty*s.cur;const z=v*rate;total+=z;rows+=`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;border-bottom:1px solid var(--border)"><span>${s.name}</span><span class="warn">${fmt(z)} ر.س</span></div>`;});
   document.getElementById('zakatCalc').innerHTML=rows+(checked.length?`<div style="display:flex;justify-content:space-between;padding:5px 0 0;font-weight:600;font-size:13px"><span>الإجمالي</span><span class="warn">${fmt(total)} ر.س</span></div>`:'<span style="color:var(--text2);font-size:12px">اختر الشركات المشمولة</span>');
   const pst=document.getElementById('purify-stock').value;const pct=parseFloat(document.getElementById('purify-pct').value)||0;
-  if(pst&&pct>0){const s=stocks.find(x=>x.id==pst);if(s){const pa=(s.divs||0)*(pct/100);document.getElementById('purifyCalc').innerHTML=`أرباح: <strong>${fmt(s.divs||0)}</strong> × ${pct}% = <span class="warn"><strong>${fmt(pa)}</strong> ر.س</span>`;}}
-  else document.getElementById('purifyCalc').innerHTML='<span style="color:var(--text2);font-size:12px">اختر الشركة وأدخل النسبة</span>';
-  const zm=movements.filter(m=>m.type==='zakat'||m.type==='purify').sort((a,b)=>b.date.localeCompare(a.date));
-  const ztbody=document.getElementById('zakatTable');ztbody.innerHTML='';
-  if(!zm.length){ztbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:1rem;color:var(--text2)">لا يوجد سجل</td></tr>';return;}
-  zm.forEach(m=>{const p=portfolios.find(x=>x.id===m.pid);const s=m.sid?stocks.find(x=>x.id===m.sid):null;ztbody.innerHTML+=`<tr><td>${m.date}</td><td><span class="badge ${movBadge[m.type]}">${movLabel[m.type]}</span></td><td style="font-size:11px">${s?s.name:(p?p.name:'-')}</td><td class="warn">-${fmt(m.amount)}</td><td style="font-size:11px;color:var(--text2)">${m.note||'-'}</td><td><button class="btn-del" onclick="removeMovement(${m.id})">🗑</button></td></tr>`;});
+  if(pst&&pct>0){const s=stocks.find(x=>x.id==pst);if(s){const pa=(s.divs||0)*(pct/100);document.getElementById('purifyCalc').innerHTML=`أرباح: <strong>${fmt(s.divs||0)}</strong> × ${pct}% = <span class="warn"><strong>${fmt(pa)}</strong> ر.س</span>`;}}else document.getElementById('purifyCalc').innerHTML='<span style="color:var(--text2);font-size:12px">اختر الشركة وأدخل النسبة</span>';
+  const zm=movements.filter(m=>m.type==='zakat'||m.type==='purify').sort((a,b)=>b.date.localeCompare(a.date));const ztbody=document.getElementById('zakatTable');ztbody.innerHTML='';if(!zm.length){ztbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:1rem;color:var(--text2)">لا يوجد سجل</td></tr>';return;}zm.forEach(m=>{const p=portfolios.find(x=>x.id===m.pid);const s=m.sid?stocks.find(x=>x.id===m.sid):null;ztbody.innerHTML+=`<tr><td>${m.date}</td><td><span class="badge ${movBadge[m.type]}">${movLabel[m.type]}</span></td><td style="font-size:11px">${s?s.name:(p?p.name:'-')}</td><td class="warn">-${fmt(m.amount)}</td><td style="font-size:11px;color:var(--text2)">${m.note||'-'}</td><td><button class="btn-del" onclick="removeMovement(${m.id})">🗑</button></td></tr>`;});
 }
 
-function setSellType(t){
-  currentSellType=t;
-  document.getElementById('btn-partial').classList.toggle('active',t==='partial');
-  document.getElementById('btn-full').classList.toggle('active',t==='full');
-  const s=stocks.find(x=>x.id===parseInt(document.getElementById('sell-stock').value));
-  if(t==='full'&&s){document.getElementById('sell-qty').value=s.qty;document.getElementById('sell-qty-wrap').style.opacity='.5';}
-  else{document.getElementById('sell-qty').value='';document.getElementById('sell-qty-wrap').style.opacity='1';}
-  document.getElementById('sell-submit-btn').textContent=t==='full'?'🚪 تسجيل التخارج الكامل':'📉 تسجيل البيع الجزئي';
-  previewSell();
+// QUICK ACTIONS
+function quickBuy(sid){
+  const s=stocks.find(x=>x.id===sid);if(!s)return;
+  document.getElementById('qaModalTitle').textContent='شراء إضافي: '+s.name;
+  document.getElementById('qaModalBody').innerHTML=`<div class="form-grid" style="margin-bottom:.75rem"><div><label class="lbl">كمية إضافية</label><input type="number" id="qa-qty" placeholder="200" min="0" step="any" style="width:100%" oninput="previewQaBuy(${sid})"></div><div><label class="lbl">سعر الشراء (ر.س)</label><input type="number" id="qa-price" placeholder="38.00" step="any" style="width:100%" oninput="previewQaBuy(${sid})"></div><div><label class="lbl">رسوم الشراء (ر.س)</label><input type="number" id="qa-fee" placeholder="0" value="0" min="0" step="any" style="width:100%" oninput="previewQaBuy(${sid})"></div><div><label class="lbl">التاريخ</label><input type="date" id="qa-date" style="width:100%" value="${new Date().toISOString().split('T')[0]}"></div></div><div id="qa-buy-prev" style="font-size:12.5px;color:var(--text2)"></div>`;
+  document.getElementById('qaModalConfirm').onclick=()=>confirmQaBuy(sid);
+  document.getElementById('qaModal').style.display='flex';
 }
-function onSellStockChange(){
-  const s=stocks.find(x=>x.id===parseInt(document.getElementById('sell-stock').value));
-  if(s){document.getElementById('sell-qty-hint').textContent=`(الرصيد: ${fmt2(s.qty)})`;if(currentSellType==='full')document.getElementById('sell-qty').value=s.qty;}
-  previewSell();
+function previewQaBuy(sid){
+  const s=stocks.find(x=>x.id===sid);const qty=parseFloat(document.getElementById('qa-qty').value)||0;const price=parseFloat(document.getElementById('qa-price').value)||0;const fee=parseFloat(document.getElementById('qa-fee').value)||0;if(!s||!qty||!price){document.getElementById('qa-buy-prev').textContent='';return;}
+  const totalCost=s.qty*s.buy+(s.fee||0);const newCost=qty*price+fee;const newAvg=(totalCost+newCost)/(s.qty+qty);
+  document.getElementById('qa-buy-prev').innerHTML=`متوسط التكلفة الجديد: <strong style="color:var(--blue)">${fmt2(newAvg)} ر.س</strong> | إجمالي الأسهم: <strong>${fmt2(s.qty+qty)}</strong>`;
 }
-function previewBuy(){
-  const qty=parseFloat(document.getElementById('s-qty').value)||0;const buy=parseFloat(document.getElementById('s-buy').value)||0;const fee=parseFloat(document.getElementById('s-fee').value)||0;
-  const p=document.getElementById('buy-preview');
-  if(qty&&buy){const total=qty*buy+fee;p.style.display='block';p.innerHTML=`إجمالي الاستثمار: <strong>${fmt(total)}</strong> ر.س &nbsp;|&nbsp; التكلفة الفعلية للسهم: <strong>${fmt2(total/qty)}</strong> ر.س`;}
-  else p.style.display='none';
+async function confirmQaBuy(sid){
+  const s=stocks.find(x=>x.id===sid);const qty=parseFloat(document.getElementById('qa-qty').value)||0;const price=parseFloat(document.getElementById('qa-price').value)||0;const fee=parseFloat(document.getElementById('qa-fee').value)||0;const date=document.getElementById('qa-date').value;
+  if(!qty||!price||!date){return;}closeQaModal();showLoading(true);
+  const totalCost=s.qty*s.buy+(s.fee||0);const newCost=qty*price+fee;const newQty=s.qty+qty;const newFee=(s.fee||0)+fee;const newBuy=(totalCost+newCost-newFee)/newQty;
+  await dbUpdate('stocks',sid,{qty:newQty,buy:newBuy,fee:newFee});await dbInsert('movements',{pid:s.pid,sid,type:'fee',amount:fee,date,note:`رسوم شراء إضافي ${s.name}`});
+  s.qty=newQty;s.buy=newBuy;s.fee=newFee;showLoading(false);renderAll();
 }
+function quickSell(sid){
+  const s=stocks.find(x=>x.id===sid);if(!s)return;switchTab('add');switchSub('sell');document.getElementById('sell-port').value=s.pid;updateSellStocks();setTimeout(()=>{document.getElementById('sell-stock').value=sid;onSellStockChange();},100);closeQaModal();
+}
+function quickEditPrice(sid){
+  const s=stocks.find(x=>x.id===sid);if(!s)return;
+  document.getElementById('qaModalTitle').textContent='تعديل السعر الحالي: '+s.name;
+  document.getElementById('qaModalBody').innerHTML=`<div><label class="lbl">السعر الحالي الجديد (ر.س)</label><input type="number" id="qa-cur" value="${s.cur}" step="any" style="width:100%"></div><p style="font-size:12px;color:var(--text2);margin-top:.5rem">السعر الحالي: ${fmt2(s.cur)} ر.س</p>`;
+  document.getElementById('qaModalConfirm').onclick=async()=>{const v=parseFloat(document.getElementById('qa-cur').value);if(!v)return;closeQaModal();showLoading(true);await dbUpdate('stocks',sid,{cur:v});s.cur=v;showLoading(false);renderAll();};
+  document.getElementById('qaModal').style.display='flex';
+}
+function closeQaModal(){document.getElementById('qaModal').style.display='none';}
+
+// RENAME MODAL
+function openRenameModal(pid){renamePid=pid;const p=portfolios.find(x=>x.id===pid);document.getElementById('renameInput').value=p?p.name:'';document.getElementById('renameModal').style.display='flex';setTimeout(()=>document.getElementById('renameInput').focus(),100);}
+function closeRenameModal(){document.getElementById('renameModal').style.display='none';renamePid=null;}
+async function confirmRename(){
+  const name=document.getElementById('renameInput').value.trim();if(!name||!renamePid)return;
+  showLoading(true);closeRenameModal();await dbUpdate('portfolios',renamePid,{name});const p=portfolios.find(x=>x.id===renamePid);if(p)p.name=name;showLoading(false);updateAllSelects();renderAll();
+}
+
+// BUY MODE
+function setBuyMode(m){currentBuyMode=m;document.getElementById('btn-buy-new').classList.toggle('active',m==='new');document.getElementById('btn-buy-add').classList.toggle('active',m==='add');document.getElementById('buy-new-form').style.display=m==='new'?'block':'none';document.getElementById('buy-add-form').style.display=m==='add'?'block':'none';}
+function updateAddStocks(){const pid=parseInt(document.getElementById('add-port').value);const ps=pid?stocks.filter(s=>s.pid===pid):stocks;const el=document.getElementById('add-stock');if(!el)return;el.innerHTML=ps.map(s=>`<option value="${s.id}">${s.name} (${fmt2(s.qty)} سهم @ ${fmt2(avgCost(s))} ر.س)</option>`).join('');previewAddBuy();}
+function previewAddBuy(){
+  const sid=parseInt(document.getElementById('add-stock').value);const qty=parseFloat(document.getElementById('add-qty').value)||0;const price=parseFloat(document.getElementById('add-price').value)||0;const fee=parseFloat(document.getElementById('add-fee').value)||0;
+  const p=document.getElementById('add-buy-preview');const s=stocks.find(x=>x.id===sid);
+  if(s&&qty&&price){const old=s.qty*s.buy+(s.fee||0);const newC=qty*price+fee;const newAvg=(old+newC)/(s.qty+qty);const tot=newC;p.style.display='block';p.innerHTML=`إجمالي الشراء: <strong>${fmt(tot)}</strong> ر.س | متوسط التكلفة الجديد: <strong style="color:var(--blue)">${fmt2(newAvg)}</strong> ر.س | إجمالي الأسهم: <strong>${fmt2(s.qty+qty)}</strong>`;}else p.style.display='none';
+}
+async function addToExisting(){
+  const sid=parseInt(document.getElementById('add-stock').value);const qty=parseFloat(document.getElementById('add-qty').value);const price=parseFloat(document.getElementById('add-price').value);const fee=parseFloat(document.getElementById('add-fee').value)||0;const date=document.getElementById('add-date').value||new Date().toISOString().split('T')[0];
+  const s=stocks.find(x=>x.id===sid);if(!s||isNaN(qty)||isNaN(price)){msgEl('add-msg','يرجى ملء الحقول المطلوبة',false);return;}
+  showLoading(true);try{
+    const oldCost=s.qty*s.buy+(s.fee||0);const newC=qty*price+fee;const newQty=s.qty+qty;const newFee=(s.fee||0)+fee;const newBuy=(oldCost+newC-newFee)/newQty;
+    await dbUpdate('stocks',sid,{qty:newQty,buy:newBuy,fee:newFee});if(fee>0)await dbInsert('movements',{pid:s.pid,sid,type:'fee',amount:fee,date,note:`رسوم شراء إضافي ${s.name}`});
+    s.qty=newQty;s.buy=newBuy;s.fee=newFee;['add-qty','add-price'].forEach(id=>document.getElementById(id).value='');document.getElementById('add-fee').value='0';document.getElementById('add-buy-preview').style.display='none';msgEl('add-msg','تم تسجيل الشراء الإضافي ✓',true);updateAllSelects();renderAll();
+  }catch(e){msgEl('add-msg','خطأ في الحفظ',false);}showLoading(false);
+}
+
+// SELL
+function setSellType(t){currentSellType=t;document.getElementById('btn-partial').classList.toggle('active',t==='partial');document.getElementById('btn-full').classList.toggle('active',t==='full');const s=stocks.find(x=>x.id===parseInt(document.getElementById('sell-stock').value));if(t==='full'&&s){document.getElementById('sell-qty').value=s.qty;document.getElementById('sell-qty-wrap').style.opacity='.5';}else{document.getElementById('sell-qty').value='';document.getElementById('sell-qty-wrap').style.opacity='1';}document.getElementById('sell-submit-btn').textContent=t==='full'?'🚪 تسجيل التخارج الكامل':'📉 تسجيل البيع الجزئي';previewSell();}
+function onSellStockChange(){const s=stocks.find(x=>x.id===parseInt(document.getElementById('sell-stock').value));if(s){document.getElementById('sell-qty-hint').textContent=`(الرصيد: ${fmt2(s.qty)} | متوسط: ${fmt2(avgCost(s))} ر.س)`;if(currentSellType==='full')document.getElementById('sell-qty').value=s.qty;}previewSell();}
+function previewBuy(){const qty=parseFloat(document.getElementById('s-qty').value)||0;const buy=parseFloat(document.getElementById('s-buy').value)||0;const fee=parseFloat(document.getElementById('s-fee').value)||0;const p=document.getElementById('buy-preview');if(qty&&buy){const total=qty*buy+fee;p.style.display='block';p.innerHTML=`إجمالي الاستثمار: <strong>${fmt(total)}</strong> ر.س | متوسط التكلفة: <strong>${fmt2(total/qty)}</strong> ر.س`;}else p.style.display='none';}
 function previewSell(){
   const sid=parseInt(document.getElementById('sell-stock').value);const qty=parseFloat(document.getElementById('sell-qty').value)||0;const price=parseFloat(document.getElementById('sell-price').value)||0;const fee=parseFloat(document.getElementById('sell-fee').value)||0;
   const p=document.getElementById('sell-preview');const s=stocks.find(x=>x.id===sid);
-  if(s&&qty&&price){
-    const effBuy=(s.qty*s.buy+(s.fee||0))/s.qty;const proceeds=qty*price-fee;const cost=qty*effBuy;const pnl=proceeds-cost;const pct=cost>0?(pnl/cost*100):0;const partial=qty<s.qty-0.0001;
-    p.style.display='block';p.innerHTML=`عائدات البيع: <strong>${fmt(proceeds)}</strong> ر.س &nbsp;|&nbsp; التكلفة: <strong>${fmt(cost)}</strong> ر.س &nbsp;|&nbsp; <span class="${pnl>=0?'pos':'neg'}">ر/خ: <strong>${pnl>=0?'+':''}${fmt(pnl)}</strong> ر.س (${fmtPct(pct)})</span>${partial?`<br>سيتبقى: <strong>${fmt2(s.qty-qty)}</strong> سهم`:'<br><span style="color:#EF4444;font-size:12px">تخارج كامل — ستنتقل الشركة لسجل المُباعة</span>'}`;
-  } else p.style.display='none';
+  if(s&&qty&&price){const ac=avgCost(s);const proceeds=qty*price-fee;const cost=qty*ac;const pnl=proceeds-cost;const pct=cost>0?(pnl/cost*100):0;const partial=qty<s.qty-0.0001;p.style.display='block';p.innerHTML=`عائدات: <strong>${fmt(proceeds)}</strong> | التكلفة (بالمتوسط): <strong>${fmt(cost)}</strong> | <span class="${pnl>=0?'pos':'neg'}">ر/خ: <strong>${pnl>=0?'+':''}${fmt(pnl)}</strong> (${fmtPct(pct)})</span>${partial?`<br>سيتبقى: <strong>${fmt2(s.qty-qty)}</strong> سهم`:'<br><span style="color:#EF4444;font-size:12px">تخارج كامل</span>'}`;}else p.style.display='none';
 }
 
-function recordZakat(){
-  const rate=parseFloat(document.getElementById('zakat-rate').value)/100;
-  const checked=[...document.querySelectorAll('#zakatList input:checked')].map(i=>parseInt(i.dataset.sid));
-  if(!checked.length)return;const today=new Date().toISOString().split('T')[0];
-  checked.forEach(sid=>{const s=stocks.find(x=>x.id===sid);if(!s)return;movements.push({id:nextMid++,pid:s.pid,sid,type:'zakat',amount:parseFloat((s.qty*s.cur*rate).toFixed(2)),date:today,note:`زكاة ${s.name}`});});
-  renderAll();
-}
-function recordPurify(){
-  const sid=parseInt(document.getElementById('purify-stock').value);const pct=parseFloat(document.getElementById('purify-pct').value)||0;
-  const s=stocks.find(x=>x.id===sid);if(!s||!pct)return;
-  const pa=parseFloat(((s.divs||0)*(pct/100)).toFixed(2));s.purified=(s.purified||0)+pa;
-  movements.push({id:nextMid++,pid:s.pid,sid,type:'purify',amount:pa,date:new Date().toISOString().split('T')[0],note:`تطهير ${s.name} ${pct}%`});
-  renderAll();
-}
-function addStock(){
-  const pid=parseInt(document.getElementById('s-port').value);const name=document.getElementById('s-name').value.trim();
-  const qty=parseFloat(document.getElementById('s-qty').value);const buy=parseFloat(document.getElementById('s-buy').value);const cur=parseFloat(document.getElementById('s-cur').value);
-  const fee=parseFloat(document.getElementById('s-fee').value)||0;const divs=parseFloat(document.getElementById('s-div').value)||0;const purified=parseFloat(document.getElementById('s-pur').value)||0;
-  const buyDate=document.getElementById('s-date').value||new Date().toISOString().split('T')[0];
+// ZAKAT
+async function recordZakat(){const rate=parseFloat(document.getElementById('zakat-rate').value)/100;const checked=[...document.querySelectorAll('#zakatList input:checked')].map(i=>parseInt(i.dataset.sid));if(!checked.length)return;const today=new Date().toISOString().split('T')[0];showLoading(true);for(const sid of checked){const s=stocks.find(x=>x.id===sid);if(!s)continue;const z=parseFloat((s.qty*s.cur*rate).toFixed(2));const row=await dbInsert('movements',{pid:s.pid,sid,type:'zakat',amount:z,date:today,note:`زكاة ${s.name}`});movements.push(row);}showLoading(false);renderAll();}
+async function recordPurify(){const sid=parseInt(document.getElementById('purify-stock').value);const pct=parseFloat(document.getElementById('purify-pct').value)||0;const s=stocks.find(x=>x.id===sid);if(!s||!pct)return;const pa=parseFloat(((s.divs||0)*(pct/100)).toFixed(2));showLoading(true);await dbUpdate('stocks',sid,{purified:(s.purified||0)+pa});s.purified=(s.purified||0)+pa;const row=await dbInsert('movements',{pid:s.pid,sid,type:'purify',amount:pa,date:new Date().toISOString().split('T')[0],note:`تطهير ${s.name} ${pct}%`});movements.push(row);showLoading(false);renderAll();}
+
+// ADD
+async function addStock(){
+  const pid=parseInt(document.getElementById('s-port').value);const name=document.getElementById('s-name').value.trim();const qty=parseFloat(document.getElementById('s-qty').value);const buy=parseFloat(document.getElementById('s-buy').value);const cur=parseFloat(document.getElementById('s-cur').value);const fee=parseFloat(document.getElementById('s-fee').value)||0;const divs=parseFloat(document.getElementById('s-div').value)||0;const purified=parseFloat(document.getElementById('s-pur').value)||0;const buy_date=document.getElementById('s-date').value||new Date().toISOString().split('T')[0];
   if(!pid||!name||isNaN(qty)||isNaN(buy)||isNaN(cur)){msgEl('s-msg','يرجى ملء الحقول المطلوبة',false);return;}
-  stocks.push({id:nextSid++,pid,name,qty,buy,cur,fee,divs,purified,buyDate});
-  ['s-name','s-qty','s-buy','s-cur','s-div','s-pur'].forEach(id=>document.getElementById(id).value='');document.getElementById('s-fee').value='0';document.getElementById('buy-preview').style.display='none';
-  msgEl('s-msg','تم تسجيل الشراء ✓',true);updateAllSelects();renderAll();
+  showLoading(true);try{const row=await dbInsert('stocks',{pid,name,qty,buy,cur,fee,divs,purified,buy_date});stocks.push(row);['s-name','s-qty','s-buy','s-cur','s-div','s-pur'].forEach(id=>document.getElementById(id).value='');document.getElementById('s-fee').value='0';document.getElementById('buy-preview').style.display='none';msgEl('s-msg','تم تسجيل الشراء ✓',true);updateAllSelects();renderAll();}catch(e){msgEl('s-msg','خطأ في الحفظ',false);}showLoading(false);
 }
-function addPortfolio(){
-  const name=document.getElementById('p-name').value.trim();if(!name){msgEl('p-msg','أدخل اسم المحفظة',false);return;}
-  portfolios.push({id:nextPid++,name,type:document.getElementById('p-type').value});
-  document.getElementById('p-name').value='';msgEl('p-msg','تمت الإضافة ✓',true);updateAllSelects();renderAll();
-}
-function addMovement(){
-  const pid=parseInt(document.getElementById('m-port').value);const sid=parseInt(document.getElementById('m-stock').value)||null;
-  const type=document.getElementById('m-type').value;const amount=parseFloat(document.getElementById('m-amount').value);const date=document.getElementById('m-date').value;const note=document.getElementById('m-note').value.trim();
-  if(!pid||isNaN(amount)||!date){msgEl('m-msg','يرجى ملء الحقول المطلوبة',false);return;}
-  if(type==='adjust'){if(!sid){msgEl('m-msg','اختر شركة لتعديل سعرها',false);return;}const s=stocks.find(x=>x.id===sid);if(s)s.cur=amount;}
-  if(type==='fee'&&sid){const s=stocks.find(x=>x.id===sid);if(s)s.fee=(s.fee||0)+amount;}
-  movements.push({id:nextMid++,pid,sid,type,amount,date,note});document.getElementById('m-amount').value='';document.getElementById('m-note').value='';
-  msgEl('m-msg','تم التسجيل ✓',true);renderAll();
-}
-function executeSell(){
+async function addPortfolio(){const name=document.getElementById('p-name').value.trim();if(!name){msgEl('p-msg','أدخل اسم المحفظة',false);return;}showLoading(true);try{const row=await dbInsert('portfolios',{name,type:document.getElementById('p-type').value});portfolios.push(row);document.getElementById('p-name').value='';msgEl('p-msg','تمت الإضافة ✓',true);updateAllSelects();renderAll();}catch(e){msgEl('p-msg','خطأ',false);}showLoading(false);}
+async function addMovement(){const pid=parseInt(document.getElementById('m-port').value);const sid=parseInt(document.getElementById('m-stock').value)||null;const type=document.getElementById('m-type').value;const amount=parseFloat(document.getElementById('m-amount').value);const date=document.getElementById('m-date').value;const note=document.getElementById('m-note').value.trim();if(!pid||isNaN(amount)||!date){msgEl('m-msg','يرجى ملء الحقول المطلوبة',false);return;}showLoading(true);try{if(type==='adjust'){if(!sid){msgEl('m-msg','اختر شركة',false);showLoading(false);return;}await dbUpdate('stocks',sid,{cur:amount});const s=stocks.find(x=>x.id===sid);if(s)s.cur=amount;}if(type==='fee'&&sid){const s=stocks.find(x=>x.id===sid);if(s){await dbUpdate('stocks',sid,{fee:(s.fee||0)+amount,buy:((s.qty*s.buy+(s.fee||0)+amount)-((s.fee||0)+amount))/s.qty});s.fee=(s.fee||0)+amount;}}const row=await dbInsert('movements',{pid,sid,type,amount,date,note});movements.push(row);document.getElementById('m-amount').value='';document.getElementById('m-note').value='';msgEl('m-msg','تم التسجيل ✓',true);renderAll();}catch(e){msgEl('m-msg','خطأ',false);}showLoading(false);}
+async function executeSell(){
   const sid=parseInt(document.getElementById('sell-stock').value);const qty=parseFloat(document.getElementById('sell-qty').value);const price=parseFloat(document.getElementById('sell-price').value);const fee=parseFloat(document.getElementById('sell-fee').value)||0;const date=document.getElementById('sell-date').value;const note=document.getElementById('sell-note').value.trim();
-  const s=stocks.find(x=>x.id===sid);
-  if(!s||isNaN(qty)||isNaN(price)||!date){msgEl('sell-msg','يرجى ملء الحقول المطلوبة',false);return;}
-  if(qty>s.qty+0.0001){msgEl('sell-msg','الكمية أكبر من الرصيد ('+fmt2(s.qty)+')',false);return;}
-  const effBuy=(s.qty*s.buy+(s.fee||0))/s.qty;const proceeds=qty*price-fee;const cost=qty*effBuy;const realizedPnl=proceeds-cost;const realizedPct=cost>0?(realizedPnl/cost*100):0;const isFullExit=qty>=s.qty-0.0001;
-  soldStocks.push({id:nextXid++,pid:s.pid,name:s.name,buyDate:s.buyDate||'-',sellDate:date,soldQty:qty,buy:s.buy,sellPrice:price,sellFee:fee,realizedPnl,realizedPct,isPartial:!isFullExit});
-  movements.push({id:nextMid++,pid:s.pid,sid:isFullExit?null:sid,stockName:s.name,type:'sell',amount:proceeds,date,note:note||(isFullExit?`تخارج كامل - ${s.name}`:`بيع جزئي - ${s.name}`)});
-  if(isFullExit){stocks=stocks.filter(x=>x.id!==sid);}else{const rem=s.qty-qty;s.fee=parseFloat((s.fee*rem/s.qty).toFixed(2));s.qty=parseFloat(rem.toFixed(6));}
-  ['sell-qty','sell-price','sell-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('sell-fee').value='0';document.getElementById('sell-preview').style.display='none';
-  msgEl('sell-msg',isFullExit?'تم التخارج الكامل ✓':'تم تسجيل البيع الجزئي ✓',true);
-  updateAllSelects();renderAll();
+  const s=stocks.find(x=>x.id===sid);if(!s||isNaN(qty)||isNaN(price)||!date){msgEl('sell-msg','يرجى ملء الحقول المطلوبة',false);return;}if(qty>s.qty+0.0001){msgEl('sell-msg','الكمية أكبر من الرصيد ('+fmt2(s.qty)+')',false);return;}
+  const ac=avgCost(s);const proceeds=qty*price-fee;const cost=qty*ac;const realized_pnl=proceeds-cost;const realized_pct=cost>0?(realized_pnl/cost*100):0;const isFullExit=qty>=s.qty-0.0001;
+  showLoading(true);try{
+    const soldRow=await dbInsert('sold_stocks',{pid:s.pid,name:s.name,buy_date:s.buy_date||'-',sell_date:date,sold_qty:qty,buy_price:ac,sell_price:price,sell_fee:fee,realized_pnl,realized_pct,is_partial:!isFullExit});soldStocks.push(soldRow);
+    const movRow=await dbInsert('movements',{pid:s.pid,sid:isFullExit?null:sid,stock_name:s.name,type:'sell',amount:proceeds,date,note:note||(isFullExit?`تخارج كامل - ${s.name}`:`بيع جزئي - ${s.name}`)});movements.push(movRow);
+    if(isFullExit){await dbDelete('stocks',sid);stocks=stocks.filter(x=>x.id!==sid);}else{const rem=s.qty-qty;const remFee=s.fee*rem/s.qty;await dbUpdate('stocks',sid,{qty:parseFloat(rem.toFixed(6)),fee:parseFloat(remFee.toFixed(2))});s.qty=parseFloat(rem.toFixed(6));s.fee=parseFloat(remFee.toFixed(2));}
+    ['sell-qty','sell-price','sell-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('sell-fee').value='0';document.getElementById('sell-preview').style.display='none';msgEl('sell-msg',isFullExit?'تم التخارج الكامل ✓':'تم البيع الجزئي ✓',true);updateAllSelects();renderAll();
+  }catch(e){msgEl('sell-msg','خطأ في الحفظ',false);}showLoading(false);
 }
-function removeStock(id){stocks=stocks.filter(s=>s.id!==id);updateAllSelects();renderAll();}
-function removeMovement(id){movements=movements.filter(m=>m.id!==id);renderAll();}
+
+async function removeStock(id){if(!confirm('حذف هذه الشركة؟'))return;showLoading(true);await dbDelete('stocks',id);stocks=stocks.filter(s=>s.id!==id);updateAllSelects();renderAll();showLoading(false);}
+async function removeMovement(id){if(!confirm('حذف هذه الحركة؟'))return;showLoading(true);await dbDelete('movements',id);movements=movements.filter(m=>m.id!==id);renderAll();showLoading(false);}
 
 function updateAllSelects(){
   const opts=portfolios.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   ['filter-sp','filter-mp','sold-port-filter'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='<option value="">كل المحافظ</option>'+opts;});
-  ['s-port','m-port','sell-port'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=opts;});
+  ['s-port','m-port','sell-port','add-port'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=opts;});
   const ps=document.getElementById('purify-stock');if(ps)ps.innerHTML=stocks.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
-  updateSellStocks();updateMovStocks();document.getElementById('zakatList').dataset.built='';
+  updateSellStocks();updateMovStocks();updateAddStocks();document.getElementById('zakatList').dataset.built='';
 }
-function updateSellStocks(){
-  const pid=parseInt(document.getElementById('sell-port')?.value);const ps=pid?stocks.filter(s=>s.pid===pid):stocks;
-  const el=document.getElementById('sell-stock');if(!el)return;
-  el.innerHTML=ps.map(s=>`<option value="${s.id}">${s.name} (${fmt2(s.qty)} سهم)</option>`).join('');
-  onSellStockChange();
-}
-function updateMovStocks(){
-  const pid=parseInt(document.getElementById('m-port')?.value);const ps=pid?stocks.filter(s=>s.pid===pid):stocks;
-  const el=document.getElementById('m-stock');if(!el)return;
-  el.innerHTML='<option value="">— المحفظة كلها —</option>'+ps.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
-}
-function toggleCol(id){const el=document.getElementById(id);const card=el.closest('.card');const h=el.style.display==='none';el.style.display=h?'block':'none';card.querySelector('.card-head').classList.toggle('collapsed',!h);}
+function updateSellStocks(){const pid=parseInt(document.getElementById('sell-port')?.value);const ps=pid?stocks.filter(s=>s.pid===pid):stocks;const el=document.getElementById('sell-stock');if(!el)return;el.innerHTML=ps.map(s=>`<option value="${s.id}">${s.name} (${fmt2(s.qty)} سهم)</option>`).join('');onSellStockChange();}
+function updateMovStocks(){const pid=parseInt(document.getElementById('m-port')?.value);const ps=pid?stocks.filter(s=>s.pid===pid):stocks;const el=document.getElementById('m-stock');if(!el)return;el.innerHTML='<option value="">— المحفظة كلها —</option>'+ps.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');}
+function toggleCol(id){const el=document.getElementById(id);const card=el.closest('.card');const h=el.style.display==='none';el.style.display=h?'block':'none';card.querySelector('.chevron').style.transform=h?'':'rotate(-90deg)';}
 function switchTab(name){const names=['overview','analysis','stocks','sold','movements','zakat','add'];document.querySelectorAll('#mainTabs .tab').forEach((t,i)=>t.classList.toggle('active',names[i]===name));names.forEach(n=>document.getElementById('tab-'+n).classList.toggle('active',n===name));}
 function switchSub(name){const names=['buy','sell','portfolio','movement'];document.querySelectorAll('#subTabs .tab').forEach((t,i)=>t.classList.toggle('active',names[i]===name));names.forEach(n=>document.getElementById('sub-'+n).classList.toggle('active',n===name));}
 function renderAll(){renderMetrics();renderOverview();renderStocksTab();renderSold();renderMovements();renderAnalysis();renderZakat();}
 
 const today=new Date().toISOString().split('T')[0];
-['m-date','sell-date','s-date'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=today;});
-initCharts();updateAllSelects();renderAll();
+['m-date','sell-date','s-date','add-date'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=today;});
+initCharts();
+// Auth handles loadAll() via onAuthStateChange
 </script>
 </body>
 </html>
+<!-- PRICE REFRESH PATCH - appended -->
+<script>
+// Extract Saudi stock ticker from name field (e.g. "أرامكو 2222" → "2222.SR")
+function extractTicker(name) {
+  const m = name.match(/\b(\d{4})\b/);
+  return m ? m[1] + '.SR' : null;
+}
+
+async function fetchPrice(ticker) {
+  // Use Yahoo Finance v8 via a CORS proxy
+  const proxy = 'https://corsproxy.io/?';
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`;
+  try {
+    const r = await fetch(proxy + encodeURIComponent(url));
+    const d = await r.json();
+    const price = d?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    return price || null;
+  } catch { return null; }
+}
+
+async function refreshPrices() {
+  const btn = document.getElementById('refreshBtn');
+  const lastEl = document.getElementById('lastUpdate');
+  btn.textContent = '⏳ جاري التحديث...';
+  btn.disabled = true;
+
+  // Get unique tickers from stocks
+  const toUpdate = stocks.map(s => ({ s, ticker: extractTicker(s.name) })).filter(x => x.ticker);
+
+  if (!toUpdate.length) {
+    btn.textContent = '🔄 تحديث الأسعار';
+    btn.disabled = false;
+    lastEl.textContent = 'لم يتم التعرف على أي رمز سهم — تأكد أن الاسم يحتوي على الرمز الرقمي (مثل 2222)';
+    return;
+  }
+
+  let updated = 0, failed = 0;
+  // Fetch prices in batches of 5
+  for (let i = 0; i < toUpdate.length; i += 5) {
+    const batch = toUpdate.slice(i, i + 5);
+    await Promise.all(batch.map(async ({ s, ticker }) => {
+      const price = await fetchPrice(ticker);
+      if (price && price !== s.cur) {
+        try {
+          await dbUpdate('stocks', s.id, { cur: price });
+          s.cur = price;
+          updated++;
+        } catch { failed++; }
+      } else if (price) { updated++; }
+      else { failed++; }
+    }));
+  }
+
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+  lastEl.textContent = `آخر تحديث: ${timeStr} | ${updated} سهم ✓${failed > 0 ? ` | ${failed} فشل` : ''}`;
+  btn.textContent = '🔄 تحديث الأسعار';
+  btn.disabled = false;
+  renderAll();
+}
+
+// Auto-refresh every 5 minutes if page is visible
+setInterval(() => {
+  if (!document.hidden && stocks.length > 0) refreshPrices();
+}, 5 * 60 * 1000);
+</script>
