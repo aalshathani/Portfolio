@@ -520,13 +520,15 @@ let currentUser=null;
 // AUTH FUNCTIONS
 let loginMode='login';
 function switchLoginTab(mode){
-  loginMode=mode;
-  document.getElementById('tabLogin').classList.toggle('active',mode==='login');
-  document.getElementById('tabRegister').classList.toggle('active',mode==='register');
-  document.getElementById('confirmWrap').style.display=mode==='register'?'block':'none';
-  document.getElementById('loginBtn').textContent=mode==='login'?'دخول':'إنشاء الحساب';
-  document.getElementById('forgotWrap').style.display=mode==='login'?'block':'none';
-  hideAuthMsg();
+  try{
+    loginMode=mode;
+    const tl=document.getElementById('tabLogin');if(tl)tl.classList.toggle('active',mode==='login');
+    const tr=document.getElementById('tabRegister');if(tr)tr.classList.toggle('active',mode==='register');
+    const cw=document.getElementById('confirmWrap');if(cw)cw.style.display=mode==='register'?'block':'none';
+    const lb=document.getElementById('loginBtn');if(lb)lb.textContent=mode==='login'?'دخول':'إنشاء الحساب';
+    const fw=document.getElementById('forgotWrap');if(fw)fw.style.display=mode==='login'?'block':'none';
+    hideAuthMsg();
+  }catch(e){console.error('switchLoginTab:',e);}
 }
 function showAuthErr(msg){const e=document.getElementById('loginErr');e.textContent=msg;e.style.display='block';document.getElementById('loginOk').style.display='none';}
 function showAuthOk(msg){const e=document.getElementById('loginOk');e.textContent=msg;e.style.display='block';document.getElementById('loginErr').style.display='none';}
@@ -810,12 +812,11 @@ function partnerPortfolioStats(p, partnerNum){
 }
 
 function renderPartners(){
-  // Update partner select options
   const p1n=getPartnerName(1),p2n=getPartnerName(2);
+  // Update partner select options
   const o1=document.getElementById('m-partner-opt1');if(o1)o1.textContent=p1n;
   const o2=document.getElementById('m-partner-opt2');if(o2)o2.textContent=p2n;
   // Update table headers
-  const p1n=getPartnerName(1), p2n=getPartnerName(2);
   const th1=document.getElementById('th-p1'); if(th1) th1.textContent=p1n+' %';
   const th2=document.getElementById('th-p2'); if(th2) th2.textContent=p2n+' %';
   document.getElementById('p1CardTitle').textContent=p1n;
@@ -1120,11 +1121,11 @@ function updateMovStocks(){const pid=parseInt(document.getElementById('m-port')?
 function toggleCol(id){const el=document.getElementById(id);const card=el.closest('.card');const h=el.style.display==='none';el.style.display=h?'block':'none';card.querySelector('.chevron').style.transform=h?'':'rotate(-90deg)';}
 function switchTab(name){const names=['overview','analysis','stocks','sold','movements','zakat','add','partners'];document.querySelectorAll('#mainTabs .tab').forEach((t,i)=>t.classList.toggle('active',names[i]===name));names.forEach(n=>document.getElementById('tab-'+n).classList.toggle('active',n===name));if(name==='partners')renderPartners();}
 function switchSub(name){const names=['buy','sell','portfolio','movement'];document.querySelectorAll('#subTabs .tab').forEach((t,i)=>t.classList.toggle('active',names[i]===name));names.forEach(n=>document.getElementById('sub-'+n).classList.toggle('active',n===name));}
-function renderAll(){renderMetrics();renderOverview();renderStocksTab();renderSold();renderMovements();renderAnalysis();renderZakat();if(document.getElementById('tab-partners')?.classList.contains('active'))renderPartners();}
+function renderAll(){try{renderMetrics();renderOverview();renderStocksTab();renderSold();renderMovements();renderAnalysis();renderZakat();if(document.getElementById('tab-partners')?.classList.contains('active'))renderPartners();}catch(e){console.error('renderAll:',e);}}
 
 const today=new Date().toISOString().split('T')[0];
 ['m-date','sell-date','s-date','add-date'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=today;});
-initCharts();
+try{initCharts();}catch(e){console.error('initCharts:',e);}
 // Auth handles loadAll() via onAuthStateChange
 </script>
 </body>
