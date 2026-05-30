@@ -183,6 +183,7 @@ tr:last-child td{border-bottom:none}tr.srow:hover td{background:var(--bg3)}
   <button class="tab" onclick="switchTab('movements')">📋 الحركات</button>
   <button class="tab" onclick="switchTab('zakat')">⭐ الزكاة</button>
   <button class="tab" onclick="switchTab('add')">➕ إضافة</button>
+  <button class="tab" onclick="switchTab('partners')">🤝 الحصص</button>
 </div>
 
 <!-- OVERVIEW -->
@@ -433,14 +434,80 @@ tr:last-child td{border-bottom:none}tr.srow:hover td{background:var(--bg3)}
       <div class="form-grid">
         <div><label class="lbl">المحفظة</label><select id="m-port" onchange="updateMovStocks()"></select></div>
         <div><label class="lbl">الشركة (اختياري)</label><select id="m-stock"><option value="">— المحفظة كلها —</option></select></div>
-        <div><label class="lbl">النوع</label><select id="m-type"><option value="dividend">أرباح موزعة</option><option value="deposit">إيداع</option><option value="withdrawal">سحب</option><option value="fee">رسوم شراء</option><option value="adjust">تعديل سعر السهم</option></select></div>
-        <div><label class="lbl">المبلغ (ر.س)</label><input type="number" id="m-amount" placeholder="5000" min="0" step="any"></div>
+        <div><label class="lbl">النوع</label><select id="m-type" onchange="togglePartnerField()"><option value="dividend">أرباح موزعة</option><option value="deposit">إيداع</option><option value="withdrawal">سحب</option><option value="fee">رسوم شراء</option><option value="adjust">تعديل سعر السهم</option></select></div>
+        <div><label class="lbl">المبلغ (ر.س)</label><input type="number" id="m-amount" placeholder="5000" min="0" step="any" oninput="previewShareChange()"></div>
         <div><label class="lbl">التاريخ</label><input type="date" id="m-date"></div>
         <div><label class="lbl">ملاحظة</label><input type="text" id="m-note" placeholder="مثال: توزيعات Q2"></div>
+      </div>
+      <!-- Partner field for deposit/withdrawal -->
+      <div id="partnerFieldWrap" style="display:none;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:.85rem 1rem;margin-top:.75rem">
+        <p style="font-size:12px;font-weight:500;color:var(--text2);margin:0 0 10px;text-transform:uppercase;letter-spacing:.4px">تحديد الشريك</p>
+        <div class="form-grid">
+          <div><label class="lbl">الحركة من حساب</label>
+            <select id="m-partner">
+              <option value="0">— مشترك (لا يعدل الحصص) —</option>
+              <option value="1" id="m-partner-opt1">الشريك الأول</option>
+              <option value="2" id="m-partner-opt2">الشريك الثاني</option>
+            </select>
+          </div>
+          <div id="sharePreviewWrap" style="display:flex;align-items:center">
+            <div id="sharePreview" style="font-size:12.5px;color:var(--text2);line-height:1.9"></div>
+          </div>
+        </div>
       </div>
       <div style="margin-top:.85rem;display:flex;gap:8px;align-items:center"><button class="btn btn-blue" onclick="addMovement()">✓ تسجيل</button><span id="m-msg" style="font-size:13px"></span></div>
     </div>
   </div>
+</div>
+
+<!-- PARTNERS TAB -->
+<div id="tab-partners" class="panel">
+  <div class="info-box" style="margin-bottom:1rem">
+    💡 حدد نسبة حصة كل شريك في كل محفظة — اللوحة تحسب تلقائياً رأس المال والقيمة والأرباح لكل شخص.
+  </div>
+
+  <!-- Partner Names -->
+  <div class="card card-pad" style="margin-bottom:1rem">
+    <p class="sec-title">أسماء الشركاء</p>
+    <div class="form-grid">
+      <div><label class="lbl">الشريك الأول (أنت)</label><input type="text" id="partner1Name" placeholder="اسمك" oninput="renderPartners()"></div>
+      <div><label class="lbl">الشريك الثاني</label><input type="text" id="partner2Name" placeholder="اسم شريكك" oninput="renderPartners()"></div>
+    </div>
+  </div>
+
+  <!-- Portfolio Shares -->
+  <div class="card card-pad" style="margin-bottom:1rem">
+    <p class="sec-title">توزيع الحصص لكل محفظة</p>
+    <table>
+      <thead><tr>
+        <th>المحفظة</th>
+        <th id="th-p1">الشريك الأول %</th>
+        <th id="th-p2">الشريك الثاني %</th>
+        <th>المجموع</th>
+      </tr></thead>
+      <tbody id="sharesTable"></tbody>
+    </table>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="grid2" style="margin-bottom:1rem">
+    <div class="card card-pad" id="partner1Card">
+      <p class="sec-title" id="p1CardTitle">الشريك الأول</p>
+      <div id="partner1Stats"></div>
+    </div>
+    <div class="card card-pad" id="partner2Card">
+      <p class="sec-title" id="p2CardTitle">الشريك الثاني</p>
+      <div id="partner2Stats"></div>
+    </div>
+  </div>
+
+  <!-- Combined Summary -->
+  <div class="card card-pad">
+    <p class="sec-title">ملخص مقارنة بين الشركاء</p>
+    <div style="position:relative;height:200px"><canvas id="partnersChart"></canvas></div>
+  </div>
+</div>
+
 </div>
 </div>
 
@@ -645,6 +712,183 @@ function periodStats(filteredMovs,filteredSold){
 }
 
 // CHARTS
+// PARTNERS STATE
+let partnerShares = {}; // {pid: {p1: 60, p2: 40}}
+let partnersChart = null;
+
+// Recalculate shares after deposit/withdrawal
+function recalcShares(pid, partnerNum, amount, isDeposit){
+  if(!partnerShares[pid]) partnerShares[pid]={p1:50,p2:50};
+  const ps=portfolioStats(portfolios.find(p=>p.id===pid)||{id:pid});
+  const totalVal=ps.totalCost; // use invested cost as base
+  if(totalVal<=0) return;
+  const p1share=partnerShares[pid].p1/100;
+  const p2share=partnerShares[pid].p2/100;
+  let p1cost=totalVal*p1share;
+  let p2cost=totalVal*p2share;
+  const sign=isDeposit?1:-1;
+  if(partnerNum===1) p1cost+=sign*amount;
+  else p2cost+=sign*amount;
+  const newTotal=p1cost+p2cost;
+  if(newTotal<=0) return;
+  partnerShares[pid].p1=Math.round((p1cost/newTotal)*1000)/10;
+  partnerShares[pid].p2=Math.round((p2cost/newTotal)*1000)/10;
+}
+
+function togglePartnerField(){
+  const type=document.getElementById('m-type').value;
+  const show=['deposit','withdrawal'].includes(type);
+  document.getElementById('partnerFieldWrap').style.display=show?'block':'none';
+  if(show) previewShareChange();
+}
+
+function previewShareChange(){
+  const type=document.getElementById('m-type').value;
+  const partnerNum=parseInt(document.getElementById('m-partner').value);
+  const amount=parseFloat(document.getElementById('m-amount').value)||0;
+  const pid=parseInt(document.getElementById('m-port').value);
+  const wrap=document.getElementById('sharePreview');
+  if(!['deposit','withdrawal'].includes(type)||!partnerNum||!amount||!pid){wrap.textContent='';return;}
+  const p=portfolios.find(x=>x.id===pid);if(!p){wrap.textContent='';return;}
+  const ps=portfolioStats(p);
+  const totalVal=ps.totalCost;
+  if(!partnerShares[pid]) partnerShares[pid]={p1:50,p2:50};
+  const isDeposit=type==='deposit';
+  let p1cost=totalVal*(partnerShares[pid].p1/100);
+  let p2cost=totalVal*(partnerShares[pid].p2/100);
+  const sign=isDeposit?1:-1;
+  if(partnerNum===1) p1cost+=sign*amount;
+  else p2cost+=sign*amount;
+  const newTotal=p1cost+p2cost;
+  if(newTotal<=0){wrap.textContent='';return;}
+  const new1=Math.round((p1cost/newTotal)*1000)/10;
+  const new2=Math.round((p2cost/newTotal)*1000)/10;
+  const p1n=getPartnerName(1),p2n=getPartnerName(2);
+  const old1=partnerShares[pid].p1,old2=partnerShares[pid].p2;
+  wrap.innerHTML=`
+    <span style="color:var(--text2)">النسب الجديدة:</span><br>
+    <span>${p1n}: <strong style="color:var(--blue)">${old1}% → ${new1}%</strong></span><br>
+    <span>${p2n}: <strong style="color:var(--blue)">${old2}% → ${new2}%</strong></span>`;
+}
+
+function getPartnerName(n){
+  const el=document.getElementById('partner'+n+'Name');
+  return el&&el.value.trim() ? el.value.trim() : (n===1?'الشريك الأول':'الشريك الثاني');
+}
+
+function getShare(pid, partner){
+  if(!partnerShares[pid]) partnerShares[pid]={p1:50,p2:50};
+  return partnerShares[pid]['p'+partner]||0;
+}
+
+function updateShare(pid, partner, val){
+  if(!partnerShares[pid]) partnerShares[pid]={p1:50,p2:50};
+  val=Math.min(100,Math.max(0,parseFloat(val)||0));
+  partnerShares[pid]['p'+partner]=val;
+  // auto-balance other partner
+  const other=partner===1?2:1;
+  partnerShares[pid]['p'+other]=Math.round((100-val)*10)/10;
+  // update other input
+  const otherEl=document.getElementById(`share_p${other}_${pid}`);
+  if(otherEl) otherEl.value=partnerShares[pid]['p'+other];
+  renderPartners();
+}
+
+function partnerPortfolioStats(p, partnerNum){
+  const s=portfolioStats(p);
+  const share=getShare(p.id, partnerNum)/100;
+  return {
+    cost: s.totalCost*share,
+    val: s.val*share,
+    divs: s.divs*share,
+    pnl: s.pnl*share,
+    pct: s.pct, // % return is same regardless of share
+    realized: s.realized*share,
+    fees: s.fees*share,
+    zakat: s.zakat*share,
+  };
+}
+
+function renderPartners(){
+  // Update partner select options
+  const p1n=getPartnerName(1),p2n=getPartnerName(2);
+  const o1=document.getElementById('m-partner-opt1');if(o1)o1.textContent=p1n;
+  const o2=document.getElementById('m-partner-opt2');if(o2)o2.textContent=p2n;
+  // Update table headers
+  const p1n=getPartnerName(1), p2n=getPartnerName(2);
+  const th1=document.getElementById('th-p1'); if(th1) th1.textContent=p1n+' %';
+  const th2=document.getElementById('th-p2'); if(th2) th2.textContent=p2n+' %';
+  document.getElementById('p1CardTitle').textContent=p1n;
+  document.getElementById('p2CardTitle').textContent=p2n;
+
+  // Build shares table
+  const tbody=document.getElementById('sharesTable'); if(!tbody) return;
+  tbody.innerHTML='';
+  portfolios.forEach(p=>{
+    const s1=getShare(p.id,1), s2=getShare(p.id,2);
+    const total=s1+s2;
+    const valid=Math.abs(total-100)<0.1;
+    tbody.innerHTML+=`<tr>
+      <td><strong>${p.name}</strong></td>
+      <td><input type="number" id="share_p1_${p.id}" value="${s1}" min="0" max="100" step="0.1"
+        onchange="updateShare(${p.id},1,this.value)" style="width:90px;text-align:center"></td>
+      <td><input type="number" id="share_p2_${p.id}" value="${s2}" min="0" max="100" step="0.1"
+        onchange="updateShare(${p.id},2,this.value)" style="width:90px;text-align:center"></td>
+      <td><span style="font-weight:600;color:${valid?'var(--green)':'var(--red)'}">${Math.round(total*10)/10}%</span></td>
+    </tr>`;
+  });
+
+  // Calculate totals per partner
+  let p1={cost:0,val:0,divs:0,pnl:0,realized:0}, p2={cost:0,val:0,divs:0,pnl:0,realized:0};
+  portfolios.forEach(p=>{
+    const s1=partnerPortfolioStats(p,1), s2=partnerPortfolioStats(p,2);
+    p1.cost+=s1.cost; p1.val+=s1.val; p1.divs+=s1.divs; p1.pnl+=s1.pnl; p1.realized+=s1.realized;
+    p2.cost+=s2.cost; p2.val+=s2.val; p2.divs+=s2.divs; p2.pnl+=s2.pnl; p2.realized+=s2.realized;
+  });
+  const p1Pct=p1.cost>0?(p1.pnl/p1.cost*100):0;
+  const p2Pct=p2.cost>0?(p2.pnl/p2.cost*100):0;
+
+  // Annual growth rate (simple: pnl/cost * 100, can refine later)
+  const statsHTML=(stats,pct)=>`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:.75rem">
+      <div class="metric"><p class="metric-label">رأس المال</p><p class="metric-value">${fmt(stats.cost)} ر.س</p></div>
+      <div class="metric"><p class="metric-label">القيمة السوقية</p><p class="metric-value">${fmt(stats.val)} ر.س</p></div>
+      <div class="metric"><p class="metric-label">أرباح موزعة</p><p class="metric-value pos">+${fmt(stats.divs)} ر.س</p></div>
+      <div class="metric"><p class="metric-label">أرباح بيع محققة</p><p class="metric-value ${stats.realized>=0?'pos':'neg'}">${stats.realized>=0?'+':''}${fmt(stats.realized)} ر.س</p></div>
+      <div class="metric"><p class="metric-label">صافي الربح/الخسارة</p><p class="metric-value ${stats.pnl>=0?'pos':'neg'}">${stats.pnl>=0?'+':''}${fmt(stats.pnl)} ر.س</p></div>
+      <div class="metric"><p class="metric-label">العائد الإجمالي</p><p class="metric-value ${pct>=0?'pos':'neg'}">${(pct>=0?'+':'')+pct.toFixed(1)}%</p></div>
+    </div>
+    <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:.75rem;font-size:12.5px;border:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--text2)">نمو رأس المال</span><span class="${(stats.val-stats.cost)>=0?'pos':'neg'}">${(stats.val-stats.cost)>=0?'+':''}${fmt(stats.val-stats.cost)} ر.س</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">نسبة النمو السنوي (تقديري)</span><span class="${pct>=0?'pos':'neg'}">${(pct>=0?'+':'')+pct.toFixed(2)}%</span></div>
+    </div>`;
+
+  document.getElementById('partner1Stats').innerHTML=statsHTML(p1,p1Pct);
+  document.getElementById('partner2Stats').innerHTML=statsHTML(p2,p2Pct);
+
+  // Chart
+  if(partnersChart) partnersChart.destroy();
+  const ctx=document.getElementById('partnersChart');
+  if(!ctx) return;
+  partnersChart=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:['رأس المال','القيمة السوقية','أرباح موزعة','صافي الربح'],
+      datasets:[
+        {label:p1n,data:[p1.cost,p1.val,p1.divs,p1.pnl],backgroundColor:'#3B82F688',borderRadius:4},
+        {label:p2n,data:[p2.cost,p2.val,p2.divs,p2.pnl],backgroundColor:'#22C55E88',borderRadius:4},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,color:'#8A97B0',
+      plugins:{legend:{labels:{color:'#8A97B0',font:{size:11}}}},
+      scales:{
+        x:{ticks:{font:{size:11},color:'#556075'},grid:{color:'#2A334822'}},
+        y:{ticks:{font:{size:10},color:'#556075',callback:v=>fmt(v)},grid:{color:'#2A334855'}}
+      }
+    }
+  });
+}
+
 let pieChart,barChart,stockBarChart,timelineChart,soldChart;
 function initCharts(){
   const gc2='#2A334855';const cd={responsive:true,maintainAspectRatio:false,color:'#8A97B0'};
@@ -840,7 +1084,15 @@ async function addStock(){
   showLoading(true);try{const row=await dbInsert('stocks',{pid,name,qty,buy,cur,fee,divs,purified,buy_date});stocks.push(row);['s-name','s-qty','s-buy','s-cur','s-div','s-pur'].forEach(id=>document.getElementById(id).value='');document.getElementById('s-fee').value='0';document.getElementById('buy-preview').style.display='none';msgEl('s-msg','تم تسجيل الشراء ✓',true);updateAllSelects();renderAll();}catch(e){msgEl('s-msg','خطأ في الحفظ',false);}showLoading(false);
 }
 async function addPortfolio(){const name=document.getElementById('p-name').value.trim();if(!name){msgEl('p-msg','أدخل اسم المحفظة',false);return;}showLoading(true);try{const row=await dbInsert('portfolios',{name,type:document.getElementById('p-type').value});portfolios.push(row);document.getElementById('p-name').value='';msgEl('p-msg','تمت الإضافة ✓',true);updateAllSelects();renderAll();}catch(e){msgEl('p-msg','خطأ',false);}showLoading(false);}
-async function addMovement(){const pid=parseInt(document.getElementById('m-port').value);const sid=parseInt(document.getElementById('m-stock').value)||null;const type=document.getElementById('m-type').value;const amount=parseFloat(document.getElementById('m-amount').value);const date=document.getElementById('m-date').value;const note=document.getElementById('m-note').value.trim();if(!pid||isNaN(amount)||!date){msgEl('m-msg','يرجى ملء الحقول المطلوبة',false);return;}showLoading(true);try{if(type==='adjust'){if(!sid){msgEl('m-msg','اختر شركة',false);showLoading(false);return;}await dbUpdate('stocks',sid,{cur:amount});const s=stocks.find(x=>x.id===sid);if(s)s.cur=amount;}if(type==='fee'&&sid){const s=stocks.find(x=>x.id===sid);if(s){await dbUpdate('stocks',sid,{fee:(s.fee||0)+amount,buy:((s.qty*s.buy+(s.fee||0)+amount)-((s.fee||0)+amount))/s.qty});s.fee=(s.fee||0)+amount;}}const row=await dbInsert('movements',{pid,sid,type,amount,date,note});movements.push(row);document.getElementById('m-amount').value='';document.getElementById('m-note').value='';msgEl('m-msg','تم التسجيل ✓',true);renderAll();}catch(e){msgEl('m-msg','خطأ',false);}showLoading(false);}
+async function addMovement(){const pid=parseInt(document.getElementById('m-port').value);const sid=parseInt(document.getElementById('m-stock').value)||null;const type=document.getElementById('m-type').value;const amount=parseFloat(document.getElementById('m-amount').value);const date=document.getElementById('m-date').value;const note=document.getElementById('m-note').value.trim();if(!pid||isNaN(amount)||!date){msgEl('m-msg','يرجى ملء الحقول المطلوبة',false);return;}
+  // Handle partner share recalculation for deposit/withdrawal
+  const partnerNum=parseInt(document.getElementById('m-partner')?.value||'0');
+  if(['deposit','withdrawal'].includes(type)&&partnerNum>0){
+    recalcShares(pid,partnerNum,amount,type==='deposit');
+  }
+  showLoading(true);try{if(type==='adjust'){if(!sid){msgEl('m-msg','اختر شركة',false);showLoading(false);return;}await dbUpdate('stocks',sid,{cur:amount});const s=stocks.find(x=>x.id===sid);if(s)s.cur=amount;}if(type==='fee'&&sid){const s=stocks.find(x=>x.id===sid);if(s){await dbUpdate('stocks',sid,{fee:(s.fee||0)+amount,buy:((s.qty*s.buy+(s.fee||0)+amount)-((s.fee||0)+amount))/s.qty});s.fee=(s.fee||0)+amount;}}
+  const partnerNote=partnerNum>0?` (${getPartnerName(partnerNum)})`:'' ;
+  const row=await dbInsert('movements',{pid,sid,type,amount,date,note:(note||'')+partnerNote});movements.push(row);document.getElementById('m-amount').value='';document.getElementById('m-note').value='';document.getElementById('m-partner').value='0';document.getElementById('partnerFieldWrap').style.display='none';document.getElementById('sharePreview').textContent='';msgEl('m-msg','تم التسجيل ✓',true);renderAll();}catch(e){msgEl('m-msg','خطأ',false);}showLoading(false);}
 async function executeSell(){
   const sid=parseInt(document.getElementById('sell-stock').value);const qty=parseFloat(document.getElementById('sell-qty').value);const price=parseFloat(document.getElementById('sell-price').value);const fee=parseFloat(document.getElementById('sell-fee').value)||0;const date=document.getElementById('sell-date').value;const note=document.getElementById('sell-note').value.trim();
   const s=stocks.find(x=>x.id===sid);if(!s||isNaN(qty)||isNaN(price)||!date){msgEl('sell-msg','يرجى ملء الحقول المطلوبة',false);return;}if(qty>s.qty+0.0001){msgEl('sell-msg','الكمية أكبر من الرصيد ('+fmt2(s.qty)+')',false);return;}
@@ -866,9 +1118,9 @@ function updateAllSelects(){
 function updateSellStocks(){const pid=parseInt(document.getElementById('sell-port')?.value);const ps=pid?stocks.filter(s=>s.pid===pid):stocks;const el=document.getElementById('sell-stock');if(!el)return;el.innerHTML=ps.map(s=>`<option value="${s.id}">${s.name} (${fmt2(s.qty)} سهم)</option>`).join('');onSellStockChange();}
 function updateMovStocks(){const pid=parseInt(document.getElementById('m-port')?.value);const ps=pid?stocks.filter(s=>s.pid===pid):stocks;const el=document.getElementById('m-stock');if(!el)return;el.innerHTML='<option value="">— المحفظة كلها —</option>'+ps.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');}
 function toggleCol(id){const el=document.getElementById(id);const card=el.closest('.card');const h=el.style.display==='none';el.style.display=h?'block':'none';card.querySelector('.chevron').style.transform=h?'':'rotate(-90deg)';}
-function switchTab(name){const names=['overview','analysis','stocks','sold','movements','zakat','add'];document.querySelectorAll('#mainTabs .tab').forEach((t,i)=>t.classList.toggle('active',names[i]===name));names.forEach(n=>document.getElementById('tab-'+n).classList.toggle('active',n===name));}
+function switchTab(name){const names=['overview','analysis','stocks','sold','movements','zakat','add','partners'];document.querySelectorAll('#mainTabs .tab').forEach((t,i)=>t.classList.toggle('active',names[i]===name));names.forEach(n=>document.getElementById('tab-'+n).classList.toggle('active',n===name));if(name==='partners')renderPartners();}
 function switchSub(name){const names=['buy','sell','portfolio','movement'];document.querySelectorAll('#subTabs .tab').forEach((t,i)=>t.classList.toggle('active',names[i]===name));names.forEach(n=>document.getElementById('sub-'+n).classList.toggle('active',n===name));}
-function renderAll(){renderMetrics();renderOverview();renderStocksTab();renderSold();renderMovements();renderAnalysis();renderZakat();}
+function renderAll(){renderMetrics();renderOverview();renderStocksTab();renderSold();renderMovements();renderAnalysis();renderZakat();if(document.getElementById('tab-partners')?.classList.contains('active'))renderPartners();}
 
 const today=new Date().toISOString().split('T')[0];
 ['m-date','sell-date','s-date','add-date'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=today;});
